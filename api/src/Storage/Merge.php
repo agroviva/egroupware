@@ -425,7 +425,224 @@ abstract class Merge
 			$replacements['$$' . ($prefix ? $prefix . '/' : '') . 'categories$$'] .= $GLOBALS['egw']->categories->id2name($main, 'name')
 				. (count($cat) > 0 ? ': ' : '') . implode(', ', $cats[$main]) . "\n";
 		}
+
+		if ($_SERVER['SERVER_NAME'] == "e32.agroviva.net") {
+			$replacements = $this->extra_replacements_e32($replacements);
+			$replacements = $this->e32_mitglieder_stammdaten($replacements);
+		}
 		return $replacements;
+	}
+
+	private function extra_replacements_e32($replacements){
+		$db = clone($GLOBALS['egw']->db);
+		//var_dump($replacements);
+
+		$contact_id = $replacements["\$\$id\$\$"];
+
+		if ($contact_id) {
+			// echo"<pre>";var_dump($replacements['$$n_fn$$']); echo "</pre>";
+		}
+
+		$user = $db->query("SELECT * FROM egw_addressbook WHERE contact_id = '".$contact_id."';",__LINE__,__FILE__,0,-1,false,2)->fetch();
+
+		$name = trim($user['n_fn']);
+
+		//var_dump(\EGroupware\Api\Config::read('infolog'));
+		$links = \EGroupware\Api\Link\Storage::get_links("addressbook", $contact_id, "infolog");
+
+		$replacements['$$zertifikat_uebersicht$$'] = "";
+		if(!is_array($this->zertifikat_sort)){ $this->zertifikat_sort = array();}
+		$i=1;
+		foreach ($links as $key => $info_id) {
+			$sql = "SELECT * FROM egw_infolog a LEFT OUTER JOIN egw_infolog_extra b ON a.info_id = b.info_id WHERE a.info_id = '{$info_id}' AND a.info_type = 'Zertifikate' AND a.info_status = 'done' AND b.info_extra_name = 'zertifikat' AND a.info_id_parent = 0 ORDER BY b.info_extra_value ASC";
+			$infolog = $db->query($sql,__LINE__,__FILE__,0,-1,false,2)->fetch();
+			if (!$infolog) {
+				continue;
+			}
+			if (!$infolog['info_enddate']) {
+				$enddate = "";
+			} else {
+				$enddate = date("d.m.Y",$infolog['info_enddate']);
+			}
+
+			$this->zertifikat_sort[] = array(
+				"name"			=> $name,
+				"zertifikat"	=> $infolog['info_extra_value'],
+				"startdate"		=> date("d.m.Y",$infolog['info_startdate']),
+				"completedate"	=> $enddate
+			);
+			$replacements['$$zertifikat_uebersicht$$'] .= "{$name};".$infolog['info_extra_value'].";ausgestellt;".date("d.m.Y",$infolog['info_startdate']).";".$enddate.";";
+			$replacements['$$zertifikat_uebersicht$$'] .= "\n";
+
+			$i++;
+		}
+
+		// echo "<pre>";
+		// var_dump($this->zertifikat_sort);
+		// echo "</pre>";
+
+
+		if ($this->ids_count == 0) {
+			usort($this->zertifikat_sort, function ($item1, $item2) {
+			    return $item1['zertifikat'] <=> $item2['zertifikat'];
+			});
+
+			$i=1;
+			foreach ($this->zertifikat_sort as $key => $zertifikat) {
+				$replacements['$$zertifikat_uebersicht1$$'] .= $zertifikat['zertifikat'].";".$zertifikat['name'].";ausgestellt;".$zertifikat['startdate'].";".$zertifikat['completedate'].";\n";
+				$i++;
+			}
+
+			// var_dump($this->ids_count, $this->zertifikat_sort);
+
+			// exit();
+		}
+		if ($this->ids_count == 0) {
+			// echo"<pre>";var_dump($replacements['$$zertifikat_uebersicht1$$']); echo "</pre>";
+			// exit();
+		}
+
+		if ($contact_id) {
+			$this->ids_count--;	
+		}
+
+		//$replacements['$$zertifikat_uebersicht$$'] = "{$name};QS;ausgestellt;\n{$name};QS;ausgestellt;";
+
+		return $replacements;
+	}
+
+	private function e32_mitglieder_stammdaten($replacements){
+		$db = clone($GLOBALS['egw']->db);
+		if (!$this->header_set){
+			$replacements['$$mitglieder_stammdaten$$'] = "Mitglieder EZO Süd, Überlingen;;;;;;;;;;;;;;;;;;;;;;".PHP_EOL.";;;;;;;;;;;;;;;;;;;;;;".PHP_EOL."Nr.;Kred.Nr.;Name;Vorname;Straße;PLZ;Ort;Tel.;Handy;Fax;Mail;HIT-Nr.;Steuer-Nr.;IBAN;VSt.;Antrag;QS-Zertifikat;QZBW-Zertifikat;Bio Zertifikat;Stellplätze Ferkel;Vertrag;Ferkelvertrag".PHP_EOL;
+			$this->header_set = true;
+		}
+
+		$contact_id = $replacements["\$\$id\$\$"];
+
+		if ($contact_id) {
+			// echo"<pre>";var_dump($replacements['$$n_fn$$']); echo "</pre>";
+		}
+
+		$user = $db->query("SELECT * FROM egw_addressbook WHERE contact_id = '".$contact_id."';",__LINE__,__FILE__,0,-1,false,2)->fetch();
+
+		$name = $user['n_family'];
+		$vorname = $user['n_given'];
+		$strasse = $user['adr_one_street'];
+		$ort = $user['adr_one_locality'];
+		$plz = $user['adr_one_postalcode'];
+		$tel = $user['tel_work'];
+		$handy = $user['tel_cell'];
+		$fax = $user['tel_fax'];
+		$email = $user['contact_email'];
+
+
+		//var_dump(\EGroupware\Api\Config::read('infolog'));
+		$links = \EGroupware\Api\Link\Storage::get_links("addressbook", $contact_id, "infolog");
+		$customfields = $db->query("
+			SELECT * FROM egw_addressbook A RIGHT JOIN egw_addressbook_extra B
+			ON A.contact_id = B.contact_id
+			WHERE B.contact_id = '$contact_id';
+		",__LINE__,__FILE__,0,-1,false,2)->GetAll();
+
+		// var_dump($customfields);
+		// exit;
+
+		$hitnummer = $krednummer = $stellplaetze_ferkel = $steuernummer = $iban = $vst = $antrag = $vertrag = $ferkelvertrag = "";
+		if (is_array($customfields)) {
+			foreach ($customfields as $key => $customfield) {
+				switch ($customfield['contact_name']) {
+					case "hitnummer":
+						$hitnummer = $customfield['contact_value'];
+						break;
+
+					case "krednummer":
+						$krednummer = $customfield['contact_value'];
+						break;
+					
+					case "Stellplätze Ferkel":
+						$stellplaetze_ferkel = $customfield['contact_value'];
+						break;
+					
+					case "steuernummer":
+						$steuernummer = $customfield['contact_value'];
+						break;
+
+					case "iban":
+						$iban = $customfield['contact_value'];
+						break;
+
+					case "vst":
+						$vst = ($customfield['contact_value'] * 100)."%";
+						break;
+
+					case "antrag":
+						$antrag = ($customfield['contact_value'] == 1 ? "Ja" : "Nein");
+						break;
+
+					default:
+						// code...
+						break;
+				}
+			}
+		}
+
+		if (empty($krednummer)) {
+			// return $replacements;
+		}
+
+		$contact_id = $user["contact_id"];
+		if ($contact_id) {
+			$bio = $db->query($this->sqlPlaceholder($contact_id, "Bio"),__LINE__,__FILE__,0,-1,false,2)->fetch();
+			$bio = (!is_null($bio["info_enddate"]) && $bio["info_enddate"] != 0 ? date("d.m.Y", $bio["info_enddate"]) : "");
+
+			$qs = $db->query($this->sqlPlaceholder($contact_id, "QS"),__LINE__,__FILE__,0,-1,false,2)->fetch();
+			$qs = (!is_null($qs["info_enddate"]) && $qs["info_enddate"] != 0 ? date("d.m.Y", $qs["info_enddate"]) : "");
+
+			$qsbw = $db->query($this->sqlPlaceholder($contact_id, "QZ BW"),__LINE__,__FILE__,0,-1,false,2)->fetch();
+			$qsbw = (!is_null($qsbw["info_enddate"]) && $qsbw["info_enddate"] != 0 ? date("d.m.Y", $qsbw["info_enddate"]) : "");
+
+			$vertragSQL = 	"SELECT * FROM (
+								SELECT * FROM `egw_infolog` AS I 
+								INNER JOIN egw_links AS L ON L.link_id1 = I.info_id 
+								WHERE I.info_type = 'Verträge' AND L.link_id2 = $contact_id
+							) AS A 
+							INNER JOIN egw_infolog_extra AS B ON A.info_id = B.info_id 
+							WHERE B.info_extra_name = 'vertragtyp' AND B.info_extra_value = 'vertrag' 
+							ORDER BY A.info_enddate DESC";
+
+			$ferkelvertragSQL = "SELECT * FROM (
+									SELECT * FROM `egw_infolog` AS I 
+									INNER JOIN egw_links AS L ON L.link_id1 = I.info_id 
+									WHERE I.info_type = 'Verträge' AND L.link_id2 = $contact_id
+								) AS A 
+								INNER JOIN egw_infolog_extra AS B ON A.info_id = B.info_id 
+								WHERE B.info_extra_name = 'vertragtyp' AND B.info_extra_value = 'ferkel' 
+								ORDER BY A.info_enddate DESC";
+
+			$vertrag = $db->query($vertragSQL,__LINE__,__FILE__,0,-1,false,2)->fetch();
+			$vertrag = (!is_null($vertrag["info_enddate"]) && $vertrag["info_enddate"] != 0 ? date("d.m.Y", $vertrag["info_enddate"]) : "");
+
+			$ferkelvertrag = $db->query($ferkelvertragSQL,__LINE__,__FILE__,0,-1,false,2)->fetch();
+			$ferkelvertrag = (!is_null($ferkelvertrag["info_enddate"]) && $ferkelvertrag["info_enddate"] != 0 ? date("d.m.Y", $ferkelvertrag["info_enddate"]) : "");
+		}
+
+		$replacements['$$mitglieder_stammdaten$$'] .= "$contact_id;$krednummer;$name;$vorname;$strasse;$plz;$ort;$tel;$handy;$fax;$email;$hitnummer;$steuernummer;$iban;$vst;$antrag;$qs;$qsbw;$bio;$stellplaetze_ferkel;$vertrag;$ferkelvertrag;".PHP_EOL;
+
+		return $replacements;
+	}
+
+	public function sqlPlaceholder($contact_id, $zertifikat){
+		return "
+		SELECT * FROM (
+			SELECT * FROM `egw_infolog` AS I 
+			INNER JOIN egw_links AS L ON L.link_id1 = I.info_id 
+			WHERE I.info_type = 'Zertifikate' AND L.link_id2 = $contact_id
+		) AS A 
+		INNER JOIN egw_infolog_extra AS B ON A.info_id = B.info_id 
+		WHERE B.info_extra_name = 'zertifikat' AND B.info_extra_value = '$zertifikat' 
+		ORDER BY A.info_enddate DESC;
+		";
 	}
 
 	/**
