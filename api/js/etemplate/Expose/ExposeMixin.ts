@@ -11,7 +11,7 @@
 
 // Don't import this more than once
 import "../../../../node_modules/blueimp-gallery/js/blueimp-gallery.min";
-import {css, html, LitElement, render} from "@lion/core";
+import {css, html, LitElement, render} from "lit";
 import {et2_nextmatch} from "../et2_extension_nextmatch";
 import {Et2Dialog} from "../Et2Dialog/Et2Dialog";
 import {ET2_DATAVIEW_STEPSIZE} from "../et2_dataview_controller";
@@ -19,7 +19,7 @@ import {egw} from "../../jsapi/egw_global";
 
 // Minimum data to qualify as an image and not cause errors
 const IMAGE_DEFAULT = {
-	title: egw.lang('loading'),
+	title: egw.lang ? egw.lang ? egw.lang('loading') : "'loading'" : "'loading'",
 	href: '',
 	type: 'image/png',
 	thumbnail: '',
@@ -680,7 +680,13 @@ export function ExposeMixin<B extends Constructor<LitElement>>(superclass : B)
 		private _audio_player(_value)
 		{
 			let button = [
-				{"button_id": 1, "label": egw.lang('close'), id: '1', image: 'cancel', default: true}
+				{
+					"button_id": 1,
+					"label": egw.lang ? egw.lang("close") : "close",
+					id: '1',
+					image: 'cancel',
+					default: true
+				}
 			];
 
 			let mediaContent = this.getMedia(_value)[0];
@@ -701,7 +707,7 @@ export function ExposeMixin<B extends Constructor<LitElement>>(superclass : B)
 				buttons: button,
 				minWidth: 350,
 				minHeight: 200,
-				modal: false,
+				isModal: false,
 				position: "right bottom,right-50 bottom-10",
 				value: {
 					content: {

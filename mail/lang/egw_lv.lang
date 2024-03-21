@@ -1,16 +1,34 @@
 (leave empty for no quota)	mail	lv	(atstājiet tukšu, ja kvotas nav)
 (no subject)	mail	lv	(nav temata)
+acl rights retrieve failed, seems there are no rights set!	mail	lv	ACL tiesību atgūšana neizdevās, šķiet, nav iestatītas tiesības!
 add all my aliases	mail	lv	Pievienot visus manus pseidonīmus
+add as new	mail	lv	Pievienot kā jaunu
+add files as %1	mail	lv	Pievienot failus kā %1
 add raw message, ignore mail attachments	mail	lv	Pārvērst pastu vienumā, pievienot neapstrādātu ziņojumu (ignorēt pasta pielikumus)
+add this certificate into contact	mail	lv	Pievienot šo sertifikātu kontaktā
 add to addressbook	mail	lv	pievienot adrešu grāmatai
+adding %1 to blacklisted email addresses failed because of %2	mail	lv	%1 pievienošana melnajā sarakstā iekļautajām e-pasta adresēm neizdevās %2 dēļ.
+adding %1 to whiltelisted email addresses failed because of %2	mail	lv	%1 pievienošana e-pasta adresēm, kas iekļautas sarakstā, neizdevās %2 dēļ.
 after reply, visible during compose	mail	lv	Pēc atbildes, redzams sastādīšanas laikā
 aliases+forwards	mail	lv	Aliases+Forwards
 always show html emails	mail	lv	Vienmēr rādīt HTML e-pasta vēstules
 always show notifiction	mail	lv	Vienmēr rādīt paziņojumu
 answered	mail	lv	Atbildēts
+attach files	mail	lv	Pievienot failus
+attach users vcard at compose to every new mail	mail	lv	Pievienojiet lietotāju vCard, kad sastādāt katru jaunu vēstuli
+attachment has been saved successfully.	mail	lv	Pielikums ir veiksmīgi saglabāts.
 attachments	mail	lv	Pielikumi
+attachments, ...	mail	lv	pielikumi, ...
+be aware by adding all selected files as %1 mode, it will also change all existing attachments in the list to %2 mode as well. would you like to proceed?	mail	lv	Ņemiet vērā, ka, pievienojot visus atlasītos failus %1 režīmā, tiks mainīti arī visi sarakstā esošie pielikumi uz %2 režīmu. \n \n \n Vai vēlaties turpināt?
+be aware that all attachments will be sent as %1!	mail	lv	Ņemiet vērā, ka visi pielikumi tiks nosūtīti kā %1!
 by default 'http://' is just replaced with 'https://'. feel free to configure 'https://proxy.egroupware.org/' to also load images only available via http.	mail	lv	Pēc noklusējuma "http://" tiek aizstāts ar "https://". Varat konfigurēt 'https://proxy.egroupware.org/', lai ielādētu arī attēlus, kas pieejami tikai caur http.
 caching of flags	mail	lv	Karodziņu kešēšana
+can not resolve the winmail.dat attachment!	mail	lv	Nevar atrisināt winmail.dat pielikumu!
+certificate details	mail	lv	Sertifikāta informācija
+certificate in text	mail	lv	Sertifikāts tekstā
+certificate info for email %1	mail	lv	Sertifikāta informācija par e-pasta %1
+certificate issued by	mail	lv	Sertifikātu izdevis
+changing subject failed because of %1	mail	lv	Tēmas maiņa neizdevās, jo %1
 changing subject failed folder %1 does not exist	mail	lv	Mainīt tēmu neizdevās mape %1 neeksistē
 compose	mail	lv	Rakstīt jaunu
 compress folder	mail	lv	Kompresēt mapi
@@ -33,36 +51,82 @@ disable	mail	lv	Deaktivizēt
 disable caching of flags	mail	lv	Atslēgt karodziņu kešēšanu
 display of html emails	mail	lv	Parādīt HTML vēstules
 display only when no plain text is available	mail	lv	Parādīt tikai tad, kad pieejams atklāts teksts
+do you really want to toggle flag %1 for all messages in the current view?	mail	lv	Vai tiešām vēlaties pārslēgt %1 karodziņu VISIEM pašreizējā skatā esošajiem ziņojumiem?
+do you really want to toggle label %1 for all messages in the current view?	mail	lv	Vai jūs patiešām vēlaties pārslēgt atzīmi %1 VISIEM ziņojumiem pašreizējā skatā?
+do you want to be asked for confirmation before attaching selected messages to new mail?	mail	lv	Vai vēlaties, lai pirms atlasīto ziņojumu pievienošanas jaunam e-pastam tiktu pieprasīts apstiprinājums?
 does not contain	mail	lv	nesatur
 does not match	mail	lv	neatbilst
 don't use sent	mail	lv	Nelieto nosūtīts
 don't use trash	mail	lv	Nelieto atkritui
 edit account	mail	lv	Rediģēt kontu
+email address	mail	lv	E-pasta adrese
+emailaddress	admin	lv	E-pasta adrese
+emailadmin: profilemanagement	mail	lv	eMailAdmin: Profilu pārvaldība
+emails in whitelisted domains are not marked as spam	mail	lv	E-pasti baltajos sarakstos iekļautajos domēnos netiek atzīmēti kā surogātpasts
 empty trash	mail	lv	atbrīvot atkritumus
-enable	mail	lv	Aktivizēt
-everyone	mail	lv	ikviens
+enable	mail	lv	Ieslēgt
+enabled	mail	lv	Ieslēgts
+encrypt your message with smime certificate	mail	lv	Šifrējiet ziņu ar S/MIME sertifikātu
+everyone	mail	lv	Visi
+examine namespace to retrieve folders in others and shared	mail	lv	Pārbaudīt nosaukumu telpu, lai iegūtu mapes citos un koplietojamajos
 extended	mail	lv	Paplašinats
-file into	mail	lv	ievietot
+failed to subscribe folder %1!	mail	lv	Neizdevās abonēt mapi %1!
+failed to unsubscribe folder %1!	mail	lv	Neizdevās noabonēt mapi %1!
+file into	mail	lv	Pārvietot uz
+file into:	mail	lv	Pārvietot uz:
 filemanager	mail	lv	Datņu pārvaldnieks
+filemode has been switched to %1	mail	lv	Faila režīms ir pārslēgts uz: %1
 flagged	mail	lv	arkarodziņiem
+flagged %1 messages as %2 in %3	mail	lv	Ziņa(-as) %1 atzīmēta(-as) kā %2 %3
+flagged %1 messages as flagged in %2	mail	lv	%1 ziņojums(-i) atzīmēts(-i) kā atzīmēts(-i) %2
+flagged %1 messages as unflagged in %2	mail	lv	%1 ziņojums(-i) atzīmēts(-i) kā neieskaitīts(-i) %2
 folder	mail	lv	Mape
+folder %1 %2 failed because of %3!	mail	lv	Mapes %1 %2 neizdevās %3 dēļ!
+folder %1 has been created successfully, although the subscription failed because of %2	mail	lv	Mape %1 ir veiksmīgi izveidota, lai gan abonēšana neizdevās %2 dēļ.
 folder settings	mail	lv	Mapes uzstādījumi
 forward	mail	lv	Pārsūtīt
 from	mail	lv	No
 from(a->z)	mail	lv	No (A->Z)
 from(z->a)	mail	lv	No (Z->A)
 general	admin	lv	Vispārējs
+get acl rights failed from imap server!	mail	lv	ACL tiesību iegūšana no IMAP servera neizdevās!
 greater than	mail	lv	lielāks nekā
+ham folder	mail	lv	Šķiņķa mape
+handling of external http images / mixed content in mails	mail	lv	Ārējo http attēlu apstrāde / jaukts saturs e-pasta ziņojumos
 header lines	mail	lv	Galvenes rindas
 html	mail	lv	HTML
+ident name	mail	lv	Identitātes nosaukums
+ident name email	mail	lv	Identitātes nosaukums [E-pasts]
+ident name organization email	mail	lv	Identitātes nosaukums Organizācija [E-pasts]
+identity label	mail	lv	Identitātes etiķete
 if	mail	lv	Ja
+if you want to see a preview of a mail by single clicking onto the subject, enable this.	mail	lv	Ja vēlaties skatīt e-pasta priekšskatījumu, vienreiz noklikšķinot uz temata, iespējojiet šo funkciju.
+if you would like to select multiple folders in one action, you can hold ctrl key then select a folder as start range and another folder within a same level as end range, all folders in between will be selected or unselected based on their current status.	mail	lv	Ja vēlaties vienā darbībā atlasīt vairākas mapes, varat turēt ctrl taustiņu un pēc tam atlasīt mapi kā sākuma diapazonu un citu mapi tajā pašā līmenī kā beigu diapazonu, un visas starp tām esošās mapes tiks atlasītas vai atceltas atkarībā no to pašreizējā statusa.
 imap	mail	lv	IMAP
 imap server	mail	lv	IMAP serveris
-inbox	mail	lv	Iesūtne
+import of message %1 failed. could not save message to folder %2 due to: %3	mail	lv	Ziņojuma %1 importēšana neizdevās. Nevarēja saglabāt ziņojumu mapē %2, jo: %3
+import of message %1 failed. destination folder %2 does not exist.	mail	lv	Ziņojuma %1 importēšana neizdevās. Mērķa mape %2 nepastāv.
+import of message %1 failed. destination folder not set.	mail	lv	Ziņojuma %1 importēšana neizdevās. Nav iestatīta mērķa mape.
+import of message %1 failed. no contacts to merge and send to specified.	mail	lv	Ziņojuma %1 importēšana neizdevās. Nav norādīti kontakti, kurus apvienot un nosūtīt.
+importance	mail	lv	nozīme
+important	mail	lv	Svarīgi
+in mailbox: %1, with id: %2, and partid: %3	mail	lv	Pastkastē: %1, ar ID: %2 un PartID: %3.
+in order to protect your privacy all external sources within this email are blocked.	mail	lv	Lai aizsargātu jūsu privātumu, visi ārējie avoti šajā e-pastā ir bloķēti.
+inbox	mail	lv	Lesūtne
 information to show on email tag	mail	lv	E-pasta birkā norādāmā informācija
-keep a copy of the message in your inbox	mail	lv	saglabāt vēstules kopiju IESŪTNĒ
+initialization of mail failed. please use the wizard to cope with the problem.	mail	lv	Pasta moduļa inicializācija neizdevās. Lūdzu, izmantojiet konfigurācijas vedni, lai labotu konfigurāciju.
+inline	mail	lv	Tālāk
+insert the signature at top of the new (or reply) message when opening compose dialog (you may not be able to switch signatures)	mail	lv	atverot sastādīšanas dialoglodziņu, ievietot parakstu jaunas (vai atbildes) ziņas augšpusē (iespējams, nebūs iespējams pārslēgt parakstus).
+job	mail	lv	Darbs
+junk	mail	lv	Junk
+junk folder	mail	lv	Surogātpasta mape
+keep a copy of the message in your inbox	mail	lv	saglabājiet ziņojuma kopiju savā iesūtnē.
 kilobytes	mail	lv	kb
+later	mail	lv	Vēlāk
+learning as ham (not spam) failed because of %1	mail	lv	Izmeklēšana kā šķipsnu (ne surogātpasta) neizdevās %1 dēļ.
+learning as spam failed because of %1	mail	lv	Mācīšanās kā surogātpasts neizdevās %1 dēļ
 less than	mail	lv	mazāk nekā
+limit mailing list results when searching for addresses	mail	lv	Ierobežot adresātu sarakstu rezultātus, meklējot adreses
 list of actions to be switched/activated on by default (eg. mail compose save as infolog action)	mail	lv	Pēc noklusējuma ieslēdzamo/aktivizējamo darbību saraksts (piemēram, darbība Mail kompose saglabāt kā InfoLog)
 mail	common	lv	Pasts
 mail acl	mail	lv	Piekļuves tiesības
@@ -74,21 +138,39 @@ mail-address	mail	lv	Pasta adrese
 mailaccount	mail	lv	Pasta konts
 mailinglist	mail	lv	Adresātu saraksts
 mails	common	lv	E-pasti
+mails can be copied to that folder via context menu, if folder is configured.	mail	lv	E-pasta vēstules var kopēt šajā mapē, izmantojot konteksta izvēlni, ja mape ir konfigurēta.
+mailserver reported:\n%1 \ndo you want to proceed by deleting the selected messages immediately (click ok)?\nif not, please try to empty your trashfolder before continuing. (click cancel)	mail	lv	Pasta serveris ziņoja:\n%1 \nVai vēlaties turpināt, nekavējoties dzēšot atlasītos ziņojumus (noklikšķiniet uz ok)?\nJa nē, lūdzu, pirms turpināšanas mēģiniet iztukšot savu atkritumu mapi. (noklikšķiniet uz atcelt)
 mark all as read	mail	lv	Atzīmēt visus kā izlasītus
 mark all messages in folder as read	mail	lv	Atzīmēt visus ziņojumus mapē kā izlasītus
 mark as deleted	mail	lv	Atzīmēt kā izdzēstu
+message learned as spam and moved to spam folder	mail	lv	Ziņa tika uztverta kā surogātpasts un pārvietota uz surogātpasta mapi
 modify subject	mail	lv	Mainīt tematu
 modify subject of this message	mail	lv	Mainīt šī ziņojuma tematu
-move selected to	mail	lv	pārvietot atlasītās uz
-move to	mail	lv	pārvietot atlasītās uz
+move selected to	mail	lv	Pārvietot atlasītās uz
+move to	mail	lv	Pārvietot atlasītās uz
 move to trash	mail	lv	Pārvietot uz atkritumiem
+name and domain	mail	lv	Nosaukums un domēns
 name and email	mail	lv	Vārds un e-pasts
+name of account	mail	lv	Konta nosaukums
+name of imap servers (space separated host or host:port)	mail	lv	IMAP serveru nosaukums (ar atstarpi atdalīts hosts vai host:port)
 never display html emails	mail	lv	Nekas nerādīt HTML vēstules
+never show	mail	lv	Nekad nerādīt
+never show notification	mail	lv	Nekad nerādīt paziņojumu
+new mail from %1	mail	lv	Jauns e-pasts no %1
+new mail notification	mail	lv	Paziņojums par jaunu e-pastu
+new message type	mail	lv	Jauna ziņojuma tips
 new subject	mail	lv	Jauns temats
+no access	mail	lv	Nav piekļuves
+no address to/cc/bcc supplied, and no folder to save message to provided.	mail	lv	Nav norādītas adreses TO/CC/BCC un nav norādīta mape, kurā saglabāt ziņojumu.
+no adress, to send this mail to, supplied	mail	lv	nav norādīta adrese, uz kuru nosūtīt šo e-pasta vēstuli.
+no folder destination supplied, and no folder to save message or other measure to store the mail (save to infolog/tracker) provided, but required.	mail	lv	Nav sniegts mapes galamērķis, un nav sniegta mape ziņojuma saglabāšanai vai cits pasākums pasta saglabāšanai (saglabāt InfoLog/Ticketsystem), bet tas ir nepieciešams.
 no sneak preview in list	mail	lv	Nav ziņojuma priekšskatījuma
+non	mail	lv	Nav
 on	mail	lv	ieslēgts
 only email	mail	lv	Tikai e-pasts
+only makes sense, if you transport password through a different channel / outside of this mail to recipients!	mail	lv	Ir jēga tikai tad, ja paroli pa citu kanālu / ārpus šī pasta saņēmējiem transportējat pa citu kanālu!
 only name	mail	lv	Tikai vārds
+only needed for some servers, that do not return all folders on root level queries to retrieve all folders for that level	mail	lv	Nepieciešams tikai dažiem serveriem, kas neatgriež visas mapes saknes līmeņa vaicājumos, lai iegūtu visas šī līmeņa mapes.
 open in html mode	mail	lv	Atvērt HTML režīmā
 open in text mode	mail	lv	Atvērt teksta režīmā
 open with collabora office	mail	lv	Atvērt ar Collabora Online
@@ -99,35 +181,78 @@ original message	mail	lv	Sākotnējā ziņa
 outbox	mail	lv	Iesūtne
 permission denied	mail	lv	Atļauja liegta
 please configure your s/mime certificate in encryption tab located at edit account dialog.	mail	lv	Lūdzu, konfigurējiet savu S/MIME sertifikātu Encryption cilnē, kas atrodas konta rediģēšanas dialoglodziņā.
+please contact your administrator to validate if your server supports serverside filterrules, and how to enable them in egroupware for your active account (%1) with id:%2.	mail	lv	Lūdzu, sazinieties ar savu administratoru, lai pārliecinātos, vai jūsu serveris atbalsta servera filtrēšanas noteikumus un kā tos iespējot EGroupware aktīvajam kontam (%1) ar ID:%2.
+please contact your administrator to validate if your server supports serverside vacationmessages, and how to enable them in egroupware for your active account (%1) with id:%2.	mail	lv	Lūdzu, sazinieties ar savu administratoru, lai pārbaudītu, vai jūsu serveris atbalsta servera brīvdienu ziņojumus un kā tos iespējot EGroupware jūsu aktīvajam kontam (%1) ar ID:%2.
+please enter password	mail	lv	Lūdzu, ievadiet paroli
 please select a address	mail	lv	Lūdzu, izvēlieties adresi
-predefined addresses for compose	mail	lv	Iepriekš noteiktas adreses sastādīšanai
+post	mail	lv	sūtīt
+predefined addresses for compose	mail	lv	Lepriekš noteiktas adreses sastādīšanai
 preview pane	mail	lv	Loga izkārtojums
 printing	mail	lv	Drukāšana
+processing of file %1 failed. failed to meet basic restrictions.	mail	lv	Failu %1 apstrāde nav izdevusies. Neizdevās izpildīt pamatierobežojumus.
+provide a default vacation text, (used on new vacation messages when there was no message set up previously)	admin	lv	Norādiet noklusējuma atvaļinājuma tekstu (izmanto jaunos atvaļinājuma ziņojumos, ja iepriekš nav bijis iestatīts neviens ziņojums).
 push notifications	mail	lv	Push paziņojumi
 quicksearch	mail	lv	Ātrā meklēšana
 quicksearch (with cc)	mail	lv	Ātrā meklēšana (+kopēšana)
+real name	mail	lv	Īstais vārds
+real name email	mail	lv	Īstais vārds [E-pasts]
+real name organization email	mail	lv	Īstais vārds Organizācija [E-pasts]
 refresh time in minutes	mail	lv	Atjaunošanas laiks ( minūtēs )
-remove all	mail	lv	Pārvietot visu
+remember the password for	mail	lv	Atcerēties paroli
+remove all	mail	lv	Noņemt visus
 remove immediately	mail	lv	Pārvietot nekavējoties
+removing %1 from blacklisted email addresses failed because of %2	mail	lv	Noņemt %1 no melnajā sarakstā iekļautajām e-pasta adresēm neizdevās, jo %2
+removing %1 from whiltelisted email addresses failed because of %2	mail	lv	Noņemt %1 no e-pasta adresēm, kas iekļautas sarakstā, neizdevās %2 dēļ.
 rename folder	mail	lv	Pārsaukt mapi
+replace 'http://' in image urls with (trailing / required!)	mail	lv	Aizstāt 'http://' attēlu urlos ar (pēdējais / obligāts!)
 replied	mail	lv	atbildēts
 reply	mail	lv	Atbildēt
 reply all	mail	lv	Atbildēt visiem
 reply to	mail	lv	Atbildēt
+replying to this message failed because the content of this message seems to be encrypted and can not be decrypted properly. if you still wish to include content of this encrypted message, you may try to use forward as attachment instead.	mail	lv	Atbildēt uz šo ziņojumu neizdevās, jo šķiet, ka ziņojuma saturs ir šifrēts un to nevar pienācīgi atšifrēt. Ja joprojām vēlaties iekļaut šī šifrētā ziņojuma saturu, tā vietā varat mēģināt izmantot pārsūtīšanu kā pielikumu.
 replyto	mail	lv	Atbildēt
+report as ham	mail	lv	Ziņot kā Ham
+report as spam	mail	lv	Ziņot kā surogātpastu
+report this email content as ham (not spam) - spam solutions like spamtitan will learn	mail	lv	Ziņot par šo e-pasta saturu kā par Ham (nevis surogātpastu) - surogātpasta risinājumi, piemēram, spamTitan, to uzzinās.
+report this email content as spam - spam solutions like spamtitan will learn	mail	lv	Ziņot par šo e-pasta saturu kā par surogātpastu - tādi surogātpasta risinājumi kā spamTitan to uzzinās.
+required pear class mail/mimedecode.php not found.	mail	lv	Nepieciešamā PEAR klase Mail/mimeDecode.php nav atrasta.
+required to disable if you use dovecot with private seen flags on shared or user folder!	mail	lv	Nepieciešams atslēgt, ja izmantojat Dovecot ar privātiem redzamajiem karogiem koplietošanas vai lietotāja mapē!
+s/mime encryption failed because no certificate has been found for sender address: %1	mail	lv	S/MIME Šifrēšana neizdevās, jo sūtītāja adresei nav atrasts sertifikāts: %1
 save all	mail	lv	Saglabāt visus
 save all attachments to filemanager	mail	lv	Saglabāt visus pielikumus failu pārvaldniekā
-select all	mail	lv	Iezīmēt visus
+save as infolog on send	mail	lv	Atzīmējiet pogu pēc nosūtīšanas izveidot kā InfoLog
+save as tracker on send	mail	lv	Atzīmējiet pogu pēc nosūtīšanas izveidot kā biļeti
+save the drafted message as eml file into vfs	mail	lv	Saglabājiet sagatavoto ziņojumu kā eml failu failu failu pārvaldītājā.
+saving of message %1 failed. destination folder %2 does not exist.	mail	lv	Ziņojuma %1 saglabāšana neizdevās. Mērķa mape %2 nepastāv.
+saving of message %1 succeeded. check folder %2.	mail	lv	Ziņojuma %1 saglabāšana ir veiksmīga. Pārbaudiet mapi %2.
+saving the rule failed:	mail	lv	Noteikuma saglabāšana neizdevās:
+security	mail	lv	Drošība .
+see attachments for content of the orignial mail	mail	lv	Oriģinālās e-pasta vēstules saturu skatiet pielikumos.
+select all	mail	lv	Izvēlieties visu
+select an existing entry in order to append mail content to it	mail	lv	Izvēlieties esošo ierakstu, lai tam pievienotu pasta saturu
+select an item to read	mail	lv	Izvēlieties elementu, lai izlasītu
 select or insert email address	mail	lv	Izvēlieties vai ievietojiet e-pasta adresi
+selected date range (with quicksearch)	mail	lv	Izvēlētais datuma diapazo
+send message and move to send folder (if configured)	mail	lv	Nosūtīt ziņu un pārvietot uz nosūtīšanas mapi (ja konfigurēts)
+send message pgp encrypted: requires keys from all recipients!	mail	lv	Nosūtīt ziņu šifrētu ar PGP: nepieciešamas atslēgas no visiem saņēmējiem!
 sent folder	mail	lv	Mape nosūtīts
+server supports special-use folders	mail	lv	Serveris atbalsta īpašas izmantošanas mapes
 set predefined values for compose...	mail	lv	Iestatiet iepriekš definētas vērtības sastādīšanai ...
+should signature be inserted after (standard) or before a reply or inline forward, and should signature be visible and changeable during compose.	mail	lv	Vai paraksts jāieliek pēc (standarta) vai pirms atbildes vai pārsūtīšanas, un vai paraksts ir redzams un maināms sastādīšanas laikā.
+show all folders, (subscribed and unsubscribed) in main screen folder pane	mail	lv	galvenajā ekrāna mapju panelī rādīt visas mapes (parakstītās UN neparakstītās).
 show notification for new arriving mails	mail	lv	Parādīt paziņojumu par jaunām ienākošām vēstulēm
+show test connection section and control the level of info displayed?	mail	lv	Rādīt testa savienojuma sadaļu un kontrolēt rādītās informācijas līmeni?
+show test connection section and control the level of info displayed??	mail	lv	Rādīt testa savienojuma sadaļu un kontrolēt rādītās informācijas līmeni???
+show them this time only	mail	lv	Rādīt tikai šoreiz
 show vertical	mail	lv	Rādīt vertikāli
 show vertical with all columns	mail	lv	Rādīt vertikāli ar visām kolonnām
 show/hide preview pane in mail list view	mail	lv	Rādīt/noslēpt priekšskatījuma paneli pasta saraksta skatā
+shows a temporary visible notification including from address, subject and a snippet of the mail	mail	lv	Parādīt īslaicīgi redzamu paziņojumu, tostarp no adreses, tēmas un e-pasta fragmentu.
+sign your message with smime certificate	mail	lv	Parakstiet savu ziņojumu ar S/MIME sertifikātu
 signature	mail	lv	Paraksts
 signature at top	mail	lv	Paraksts augšpusē
 signature position and visibility	mail	lv	Paraksta pozīcija un redzamība
+signed by	mail	lv	Parakstījis
 size(...->0)	mail	lv	Izmērs (...->0)
 size(0->...)	mail	lv	Izmērs (0->...)
 small view	mail	lv	mazais skats
@@ -139,12 +264,32 @@ sort order	mail	lv	Vieta pēc kārtas
 subject(a->z)	mail	lv	Tēma (A->Z)
 subject(z->a)	mail	lv	Tēma (Z->A)
 text	mail	lv	Teksts
+the imap server need to meet certain requirements and be configured for it:	mail	lv	IMAP serverim ir jāatbilst noteiktām prasībām UN tas ir jākonfigurē:
+the rule with priority %1 successfully saved!	mail	lv	Noteikums ar prioritāti %1 veiksmīgi saglabāts!
 then	mail	lv	THEN
+there is no space left to store sieve script, please check sieve_maxscriptsize option on your mailserver's config.	mail	lv	Nav atlicis vietas sieve skripta uzglabāšanai, lūdzu, pārbaudiet sieve_maxscriptsize opciju sava pasta servera konfigurācijā.
+this mail contains external images served via insecure http protocol. be aware showing or allowing them can compromise your security!	mail	lv	Šis pasts satur ārējus attēlus, kas tiek apkalpoti, izmantojot nedrošu HTTP protokolu. Ņemiet vērā, ka to parādīšana vai atļaušana var apdraudēt jūsu drošību!
+this message is smime encrypted and password protected.	mail	lv	Šī ziņa ir šifrēta ar S/MIME un aizsargāta ar paroli.
+timeout on connections to your imap server	mail	lv	Savienojumu ar IMAP serveri laika ierobežojums
+to do	mail	lv	Darīt
+toggle all folders view for %1	mail	lv	Pārslēdziet visu mapju skatījumu %1
+toggled on actions	mail	lv	Pārslēgt uz darbībām
+trash	mail	lv	Izmest atkritumus
 trash folder	mail	lv	Atkritumu mape
 unread	mail	lv	Nelasīts
-vacation notice	mail	lv	norāde par atrašanos atvaļinājumā
+vacation notice	mail	lv	Norāde par atrašanos atvaļinājumā
 when deleting messages	mail	lv	Kad dzēš vēstules
 write	mail	lv	Rakstīt
 wrote	mail	lv	rakstīja
+yes, only trigger connection reset	mail	lv	jā, tikai aktivizēt savienojuma atiestatīšanu
+yes, show all debug information available for the user	mail	lv	jā, parādīt visu lietotājam pieejamo atkļūdošanas informāciju.
+you can either choose to save as infolog or tracker, not both.	mail	lv	Varat izvēlēties saglabāt kā InfoLog VAI kā izsekošanas līdzekli, bet ne kā abus.
 you can select what info to be displayed on email tag	mail	lv	Varat izvēlēties, kāda informācija tiks rādīta e-pasta birkā.
-you've got new mail	mail	lv	Jūs esat saņēmis jaunu pastu
+you can use $$start$$ for the above start date and $$end$$ for the end date.	mail	lv	Iepriekš minētajam sākuma datumam varat izmantot $$start$$, bet beigu datumam - $$end$$.
+you may add this certificate into your contact, if you trust this signature.	mail	lv	Jūs varat pievienot šo sertifikātu savā kontaktā, ja uzticaties šim parakstam.
+you need to enter your s/mime passphrase to send this message.	mail	lv	Lai nosūtītu šo ziņojumu, jums ir jāievada S/MIME parole.
+you need to install mailvelope plugin available for chrome and firefox from %1.	mail	lv	Jums nepieciešams instalēt Mailvelope spraudni, kas pieejams Chrome un Firefox no %1.
+you need to save the message as draft first before to be able to save it into vfs	mail	lv	Pirms ziņojuma saglabāšanas VFS jums vispirms ir jāsaglabā ziņojums kā melnraksts.
+you will loose current message body, unless you save it to your clipboard!	mail	lv	Jūs pazaudēsiet pašreizējā ziņojuma tekstu, ja vien jūs to nesaglabāsiet savā starpliktuvē!
+you've got new mail	mail	lv	Jums ir jauns e-pasts
+your remaining quota %1 is too low, you may not be able to send/receive further emails.\n although cleaning up emails in trash or junk folder might help you to get some free space back.\n if that didn't help, please ask your administrator for more quota.	mail	lv	Jūsu atlikusī kvota %1 ir pārāk maza, iespējams, jūs nevarēsiet sūtīt/saņemt turpmākos e-pastus.<br>Lai gan e-pastu notīrīšana miskastē vai mēstuļu mapē varētu palīdzēt jums atgūt nedaudz brīvas vietas.<br>Ja tas nepalīdzēja, lūdzu, lūdziet administratoram piešķirt lielāku kvotu.

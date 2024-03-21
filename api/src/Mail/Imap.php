@@ -47,7 +47,7 @@ use Horde_Imap_Client_Mailbox_List;
  * @property-read string $acc_folder_template template folder
  * @property-read string $acc_folder_junk junk/spam folder
  * @property-read string $acc_imap_type imap class to use, default Imap
- * @property-read string $acc_imap_logintype how to construct login-name standard, vmailmgr, admin, uidNumber
+ * @property-read string $acc_imap_logintype how to construct login-name standard, vmailmgr, admin, uidNumber, domain/username
  * @property-read string $acc_domain domain name
  * @property-read boolean $acc_imap_administration enable administration
  * @property-read string $acc_imap_admin_username
@@ -67,7 +67,7 @@ class Imap extends Horde_Imap_Client_Socket implements Imap\PushIface
 	 * @var array
 	 */
 	static public $default_params = array(
-		//'debug' => '/tmp/imap.log', // uncomment to log communication with IMAP server
+		//'debug' => '/var/lib/egroupware/imap.log', // uncomment to log communication with IMAP server
 		//'debug_literal' => true,    // uncomment to log mail contents returned by IMAP server
 		'cache' => true,              // default caching via Cache / Api\Cache
 	);
@@ -100,7 +100,7 @@ class Imap extends Horde_Imap_Client_Socket implements Imap\PushIface
 	protected $mbAvailable;
 
 	/**
-	 * Login type: 'uid', 'vmailmgr', 'uidNumber', 'email'
+	 * Login type: 'uid', 'vmailmgr', 'uidNumber', 'email', 'domain/username'
 	 *
 	 * @var string
 	 */
@@ -117,6 +117,11 @@ class Imap extends Horde_Imap_Client_Socket implements Imap\PushIface
 	 * @var boolean
 	 */
 	protected $enableSieve = false;
+
+	/**
+	 * @var string|null
+	 */
+	protected $loginType;
 
 	/**
 	 * Connection is an admin connection
@@ -339,7 +344,7 @@ class Imap extends Horde_Imap_Client_Socket implements Imap\PushIface
 					return $this->getParam($name);
 				}
 				// calling Horde_Imap_Client's __get() method available since 2.24.1
-				return is_callable('parent::__get') ? parent::__get($name) : null;
+				return parent::__get($name);
 		}
 	}
 
@@ -558,13 +563,14 @@ class Imap extends Horde_Imap_Client_Socket implements Imap\PushIface
 	 * getMailboxCounters
 	 *
 	 * @param array|string $mailbox
+	 * @param bool $getModSeq true: query highestmodseq (returned in uppercase!)
 	 * @return array|false with counters
 	 */
-	function getMailboxCounters($mailbox)
+	function getMailboxCounters($mailbox, bool $getModSeq=false)
 	{
 		try
 		{
-			$status = $this->status($mailbox);
+			$status = $this->status($mailbox, Horde_Imap_Client::STATUS_ALL | ($getModSeq ? Horde_Imap_Client::STATUS_HIGHESTMODSEQ : 0));
 			foreach ($status as $key => $v)
 			{
 				$_status[strtoupper($key)]=$v;
@@ -587,10 +593,11 @@ class Imap extends Horde_Imap_Client_Socket implements Imap\PushIface
 	 * getStatus
 	 *
 	 * @param string $mailbox
-	 * @param bool ignoreStatusCache ignore the cache used for counters
+	 * @param bool $ignoreStatusCache ignore the cache used for counters
+	 * @param bool $getModSeq true: return highestmodseq with key "modseq"
 	 * @return array with counters
 	 */
-	function getStatus($mailbox, $ignoreStatusCache=false)
+	function getStatus($mailbox, $ignoreStatusCache=false, bool $getModSeq=false)
 	{
 		$mailboxes = $this->listMailboxes($mailbox,Horde_Imap_Client::MBOX_ALL_SUBSCRIBED, array(
 				'attributes'=>true,
@@ -601,6 +608,7 @@ class Imap extends Horde_Imap_Client_Socket implements Imap\PushIface
 
 		$flags = Horde_Imap_Client::STATUS_ALL;
 		if ($ignoreStatusCache) $flags |= Horde_Imap_Client::STATUS_FORCE_REFRESH;
+		if ($getModSeq) $flags |= Horde_Imap_Client::STATUS_HIGHESTMODSEQ;
 
 		$mboxes = new Horde_Imap_Client_Mailbox_List($mailboxes);
 		//error_log(__METHOD__.__LINE__.array2string($mboxes->count()));
@@ -1162,6 +1170,10 @@ class Imap extends Horde_Imap_Client_Socket implements Imap\PushIface
 
 			case 'uidNumber':
 				$_username = 'u'.$accountID;
+				break;
+
+			case 'domain/username':
+				$_username = $this->acc_domain.'/'.$_username;
 				break;
 
 			default:

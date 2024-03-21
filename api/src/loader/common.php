@@ -29,7 +29,7 @@ if (!function_exists('get_magic_quotes_gpc'))
 }
 
 /**
-* applies stripslashes recursivly on each element of an array
+* applies stripslashes recursively on each element of an array
 *
 * @param array &$var
 * @return array
@@ -116,7 +116,7 @@ if (!function_exists('imap_rfc822_parse_adrlist'))
 		foreach(explode(',', $address) as $part)
 		{
 			$trimmed = trim(($pending ? $pending.',' : '').$part);
-			if (($trimmed[0] == '"' && substr($trimmed, -1) != '>')||strpos($part, '@')===false)
+			if ((($trimmed[0]??null) == '"' && substr($trimmed, -1) != '>')||strpos($part, '@')===false)
 			{
 				$pending .= ($pending ? $pending.',' : '').$part;
 				continue;
@@ -291,37 +291,37 @@ if (file_exists(EGW_SERVER_ROOT.'/phpgwapi'))
  * @author skeeter
  * This function will return a properly formatted account_id. This can take either a name or an account_id as paramters. If a name is provided it will return the associated id.
  * $account_id = get_account_id($accountid);
- * @param int/string $account_id either a name or an id
- * @param int/string $default_id either a name or an id
+ * @param int|string $account_id either a name or an id
+ * @param int|string $default_id either a name or an id
  * @return int account_id
  */
 function get_account_id($account_id = '',$default_id = '')
 {
-	if (gettype($account_id) == 'integer')
+	if (is_int($account_id))
 	{
 		return $account_id;
 	}
-	elseif ($account_id == '')
+	if ($account_id == '')
 	{
 		if ($default_id == '')
 		{
-			return (isset($GLOBALS['egw_info']['user']['account_id'])?$GLOBALS['egw_info']['user']['account_id']:0);
+			return $GLOBALS['egw_info']['user']['account_id'] ?? 0;
 		}
 		elseif (is_string($default_id))
 		{
-			return $GLOBALS['egw']->accounts->name2id($default_id);
+			return Api\Accounts::getInstance()->name2id($default_id);
 		}
 		return (int)$default_id;
 	}
 	elseif (is_string($account_id))
 	{
-		if((int)$account_id && $GLOBALS['egw']->accounts->exists((int)$account_id) == True)
+		if((int)$account_id && Api\Accounts::getInstance()->exists((int)$account_id))
 		{
 			return (int)$account_id;
 		}
 		else
 		{
-			return $GLOBALS['egw']->accounts->name2id($account_id);
+			return Api\Accounts::getInstance()->name2id($account_id);
 		}
 	}
 }
@@ -366,7 +366,7 @@ function function_backtrace($remove=0)
 			{
 				$ret[] = (isset($level['class'])?$level['class'].$level['type']:'').$level['function'].
 					($n > 0 && isset($backtrace[$n-1]['line']) ? ':'.$backtrace[$n-1]['line'] : '').	// add line number of call
-					(!$level['class'] && !is_object($level['args'][0]) && $level['function'] != 'unserialize' ?
+					(empty($level['class']) && !is_object($level['args'][0]) && $level['function'] != 'unserialize' ?
 					'('.substr(str_replace(EGW_SERVER_ROOT,'',(string)$level['args'][0]),0,64).')' : '');
 			}
 		}

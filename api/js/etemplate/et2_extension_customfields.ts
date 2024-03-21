@@ -25,7 +25,9 @@ import {et2_IDetachedDOM, et2_IInput} from "./et2_core_interfaces";
 import {et2_cloneObject, et2_no_init} from "./et2_core_common";
 import {et2_DOMWidget} from "./et2_core_DOMWidget";
 import {loadWebComponent} from "./Et2Widget/Et2Widget";
-import {LitElement} from "@lion/core";
+import {LitElement} from "lit";
+import {Et2VfsSelectButton} from "./Et2Vfs/Et2VfsSelectButton";
+import {Et2Tabs} from "./Layout/Et2Tabs/Et2Tabs";
 
 export class et2_customfields_list extends et2_valueWidget implements et2_IDetachedDOM, et2_IInput
 {
@@ -49,7 +51,7 @@ export class et2_customfields_list extends et2_valueWidget implements et2_IDetac
 			'name': 'Field filter',
 			"default": "",
 			"type": "any", // String or array
-			"description": "Filter displayed custom fields by their 'type2' attribute"
+			"description": "Filter displayed custom fields by their 'type2' attribute, use 'previous' for the filter of the previous / regular cf widget"
 		},
 		'private': {
 			ignore: true,
@@ -66,6 +68,13 @@ export class et2_customfields_list extends et2_valueWidget implements et2_IDetac
 			"type": "string",
 			"default": et2_no_init,
 			"description": "JS code which is executed when the value changes."
+		},
+		// filter cfs by a given tab value
+		'tab': {
+			name: "tab",
+			type: "string",
+			default: null,
+			description: "only show cfs with the given tab attribute value, use 'panel' for the tab-panel the widget is in"
 		},
 		// Allow changing the field prefix.  Normally it's the constant but importexport filter changes it.
 		"prefix": {
@@ -86,6 +95,8 @@ export class et2_customfields_list extends et2_valueWidget implements et2_IDetac
 	private rows = {};
 	widgets = {};
 	private detachedNodes = [];
+
+	static previous_type_filter;
 
 	constructor(_parent?, _attrs? : WidgetConfig, _child? : object)
 	{
@@ -121,6 +132,13 @@ export class et2_customfields_list extends et2_valueWidget implements et2_IDetac
 			}
 		}
 
+		// allow to use previous type_filter
+		if (this.options.type_filter === "previous")
+		{
+			this.options.type_filter = et2_customfields_list.previous_type_filter;
+		}
+		et2_customfields_list.previous_type_filter = this.options.type_filter;
+
 		if(this.options.type_filter && typeof this.options.type_filter == "string")
 		{
 			this.options.type_filter = this.options.type_filter.split(",");
@@ -147,8 +165,39 @@ export class et2_customfields_list extends et2_valueWidget implements et2_IDetac
 					if(jQuery.inArray(types[i],this.options.type_filter) > -1)
 					{
 						this.options.fields[field_name] = true;
-
 					}
+				}
+			}
+		}
+
+		// tab === "panel" --> use label of tab panel
+		if (this.options.tab === 'panel')
+		{
+			this.options.tab = Et2Tabs.getTabPanel(this, true);
+		}
+		// filter fields additionally by tab attribute
+		if (typeof this.options.fields === "undefined" || !Object.keys(this.options.fields).length)
+		{
+			this.options.fields = {};
+			for(let field_name in this.options.customfields)
+			{
+				if (this.options.customfields[field_name].tab === this.options.tab)
+				{
+					this.options.fields[field_name] = true;
+				}
+			}
+		}
+		else
+		{
+			for(let field_name in this.options.customfields)
+			{
+				if (this.options.customfields[field_name].tab !== this.options.tab)
+				{
+					this.options.fields[field_name] = false;
+				}
+				else if (this.options.tab)
+				{
+					this.options.fields[field_name] = true;
 				}
 			}
 		}
@@ -231,7 +280,6 @@ export class et2_customfields_list extends et2_valueWidget implements et2_IDetac
 			// Avoid creating field twice
 			if(!this.rows[id])
 			{
-
 				const row = jQuery(document.createElement("tr"))
 					.appendTo(this.tbody)
 					.addClass(this.id + '_' + id);
@@ -284,7 +332,8 @@ export class et2_customfields_list extends et2_valueWidget implements et2_IDetac
 
 				const type = attrs.type ? attrs.type : field.type;
 				// Set any additional attributes set in options, but not for widgets that pass actual options
-				if(['select','radio','radiogroup','checkbox','button'].indexOf(field.type) == -1 && !jQuery.isEmptyObject(field.values))
+				if(['select','radio','radiogroup','checkbox','button'].indexOf(field.type) == -1 &&
+					setup_function !== '_setup_link_entry' && !jQuery.isEmptyObject(field.values))
 				{
 					const w = et2_registry[type];
 					const wc = window.customElements.get('et2-' + type);
@@ -360,7 +409,7 @@ export class et2_customfields_list extends et2_valueWidget implements et2_IDetac
 		// Add in settings that are objects
 
 		// Customized settings for this widget (unlikely)
-		const data = this.getArrayMgr("modifications").getEntry(this.id);
+		const data = this.id ? this.getArrayMgr("modifications").getEntry(this.id) ?? {} : {};
 		// Check for global settings
 		const global_data = this.getArrayMgr("modifications").getRoot().getEntry('~custom_fields~', true);
 		if(global_data)
@@ -634,11 +683,19 @@ export class et2_customfields_list extends et2_valueWidget implements et2_IDetac
 
 	 _setup_date(field_name, field, attrs) {
 		attrs.data_format = field.values && field.values.format ? field.values.format : 'Y-m-d';
+		 if(field.values?.format)
+		 {
+			 delete field.values.format;
+		 }
 		return true;
 	}
 	_setup_date_time( field_name, field, attrs)
 	{
 		attrs.data_format = field.values && field.values.format ? field.values.format : 'Y-m-d H:i:s';
+		if(field.values?.format)
+		{
+			delete field.values.format;
+		}
 		return true;
 	}
 	_setup_htmlarea( field_name, field, attrs)
@@ -761,6 +818,7 @@ export class et2_customfields_list extends et2_valueWidget implements et2_IDetac
 
 		attrs.type = "link-entry";
 		attrs[attrs.readonly ? "app" : "only_app"] = typeof field.only_app == "undefined" ? field.type : field.only_app;
+		attrs.searchOptions = {filter: field.values || {}};
 		return true;
 	}
 
@@ -787,30 +845,35 @@ export class et2_customfields_list extends et2_valueWidget implements et2_IDetac
 				.appendTo(row);
 
 			// Create upload widget
-			let widget = this.widgets[field_name] = <et2_DOMWidget>et2_createWidget(attrs.type ? attrs.type : field.type, attrs, this);
+			let widget = this.widgets[field_name] = <et2_DOMWidget>et2_createWidget(attrs.type ? attrs.type : field.type, {...attrs}, this);
 
 			// This controls where the widget is placed in the DOM
 			this.rows[attrs.id] = cf[0];
 			jQuery(widget.getDOMNode(widget)).css('vertical-align','top');
 
 			// Add a link to existing VFS file
-			const select_attrs = jQuery.extend({},
-				attrs,
+			const required = attrs.needed ?? attrs.required;
+			delete attrs.needed;
+			const select_attrs = {
+				...attrs,
 				// Filemanager select
-				{
-					label: '',
+				...{
+					path: '~',
 					mode: widget.options.multiple ? 'open-multiple' : 'open',
 					method: 'EGroupware\\Api\\Etemplate\\Widget\\Link::ajax_link_existing',
-					method_id: attrs.path,
-					button_label: egw.lang('Link')
-				}, {type: 'vfs-select'});
+					methodId: attrs.path,
+					buttonLabel: this.egw().lang('Link')
+				},
+				type: 'et2-vfs-select',
+				required: required
+			}
 			select_attrs.id = attrs.id + '_vfs_select';
 
 			// This controls where the button is placed in the DOM
 			this.rows[select_attrs.id] = cf[0];
 
 			// Do not store in the widgets list, one name for multiple widgets would cause problems
-			widget = <et2_DOMWidget>et2_createWidget(select_attrs.type, select_attrs, this);
+			widget = <Et2VfsSelectButton>loadWebComponent(select_attrs.type, select_attrs, this);
 			jQuery(widget.getDOMNode(widget)).css('vertical-align','top').prependTo(cf);
 		}
 		return false;

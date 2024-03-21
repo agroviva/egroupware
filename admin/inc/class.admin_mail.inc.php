@@ -129,6 +129,7 @@ class admin_mail
 		//'admin'		=> 'Username/Password defined by admin',
 		'uidNumber' => 'UserId@domain eg. u1234@domain',
 		'email'	    => 'EMail-address from account',
+		'domain/username' => 'Exchange: domain/username',
 	);
 
 	/**
@@ -1263,7 +1264,7 @@ class admin_mail
 		else
 		{
 			try {
-				if (empty($content['acc_imap_username']) && ($oauth = OpenIDConnectClient::providerByDomain(
+				if (($oauth = OpenIDConnectClient::providerByDomain(
 					$content['acc_oauth_username'] ?? $content['acc_imap_username'] ?? $content['ident_email'], $content['acc_imap_host'])))
 				{
 					$content += self::oauth2content($oauth);
@@ -1541,17 +1542,21 @@ class admin_mail
 			$oidc->addScope($content['acc_oauth_scopes']);
 		}
 
-		if (!empty($content['acc_oauth_access_token']) || !empty($content['acc_oauth_refresh_token']))
+		if (!empty($content['acc_oauth_access_token']) ||
+			!empty($content['acc_oauth_refresh_token']) && $content['acc_oauth_refresh_token'] !== Mail\Credentials::UNAVAILABLE)
 		{
 			if (empty($content['acc_oauth_access_token']))
 			{
-				$content['acc_oauth_access_token'] = $oidc->refreshToken($content['acc_oauth_refresh_token']);
+				$content['acc_oauth_access_token'] = $oidc->refreshToken($content['acc_oauth_refresh_token'])->access_token;
 			}
-			if ($smtp)
+			if (!empty($content['acc_oauth_access_token']))
 			{
-				return new Horde_Smtp_Password_Xoauth2($content['acc_oauth_username'] ?? $content['acc_smtp_username'], $content['acc_oauth_access_token']);
+				if ($smtp)
+				{
+					return new Horde_Smtp_Password_Xoauth2($content['acc_oauth_username'] ?? $content['acc_smtp_username'], $content['acc_oauth_access_token']);
+				}
+				return new Horde_Imap_Client_Password_Xoauth2($content['acc_oauth_username'] ?? $content['acc_imap_username'], $content['acc_oauth_access_token']);
 			}
-			return new Horde_Imap_Client_Password_Xoauth2($content['acc_oauth_username'] ?? $content['acc_imap_username'], $content['acc_oauth_access_token']);
 		}
 		// Run OAuth authentication, will NOT return, but call success or failure callbacks below
 		$oidc->authenticateThen(__CLASS__.'::oauthAuthenticated', [$content], __CLASS__.'::oauthFailure', [$content]);

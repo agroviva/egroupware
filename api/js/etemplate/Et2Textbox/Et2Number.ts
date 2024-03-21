@@ -9,7 +9,7 @@
  */
 
 import {Et2Textbox} from "./Et2Textbox";
-import {css, html, render} from "@lion/core";
+import {css, html, render} from "lit";
 
 export class Et2Number extends Et2Textbox
 {
@@ -159,7 +159,7 @@ export class Et2Number extends Et2Textbox
 
 	get valueAsNumber() : number
 	{
-		let val = this.__value;
+		let val = super.value;
 
 		if("" + val !== "")
 		{
@@ -185,7 +185,9 @@ export class Et2Number extends Et2Textbox
 	private handleScroll(e)
 	{
 		const old_value = this.value;
-		this.value = "" + (this.valueAsNumber + e.detail * (parseFloat(this.step) || 1));
+		const min = parseFloat(this.min ?? Number.MIN_SAFE_INTEGER);
+		const max = parseFloat(this.max ?? Number.MAX_SAFE_INTEGER);
+		this.value = "" + Math.min(Math.max(this.valueAsNumber + e.detail * (parseFloat(this.step) || 1), min), max);
 		this.dispatchEvent(new CustomEvent("sl-change", {bubbles: true}));
 		this.requestUpdate("value", old_value);
 	}

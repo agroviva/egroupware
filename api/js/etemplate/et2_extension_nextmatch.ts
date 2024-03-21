@@ -73,9 +73,9 @@ import {Et2Dialog} from "./Et2Dialog/Et2Dialog";
 import {Et2Select} from "./Et2Select/Et2Select";
 import {loadWebComponent} from "./Et2Widget/Et2Widget";
 import {Et2AccountFilterHeader} from "./Et2Nextmatch/Headers/AccountFilterHeader";
-import {Et2SelectCategory} from "./Et2Select/Et2SelectCategory";
+import {Et2SelectCategory} from "./Et2Select/Select/Et2SelectCategory";
 import {Et2Searchbox} from "./Et2Textbox/Et2Searchbox";
-import {LitElement} from "@lion/core";
+import type {LitElement} from "lit";
 
 //import {et2_selectAccount} from "./et2_widget_SelectAccount";
 let keep_import : Et2AccountFilterHeader
@@ -368,6 +368,7 @@ export class et2_nextmatch extends et2_DOMWidget implements et2_IResizeable, et2
 		this.controller = null;
 		this.rowProvider = null;
 
+		this._queue_refresh_callback = this._queue_refresh_callback.bind(this);
 	}
 
 	/**
@@ -961,13 +962,22 @@ export class et2_nextmatch extends et2_DOMWidget implements et2_IResizeable, et2
 
 				if(data.total >= 1)
 				{
-					this.type == et2_nextmatch.ADD ? this.nm.refresh_add(this.uid, this.type, controller)
-												   : this.nm.refresh_update(this.uid, controller);
+					row_ids.forEach(id =>
+					{
+						let uid = `${this.prefix}::${id}`;
+						this.type == et2_nextmatch.ADD ? this.nm.refresh_add(uid, this.type, controller)
+													   : this.nm.refresh_update(uid, controller);
+					})
+
 				}
 				else if(this.type == et2_nextmatch.UPDATE)
 				{
-					// Remove row from controller
-					this.controller.deleteRow(this.uid);
+					// Remove rows from controller
+					row_ids.forEach(id =>
+					{
+						let uid = `${this.prefix}::${id}`;
+						this.controller.deleteRow(uid);
+					});
 
 					// Adjust total rows, clean grid
 					this.controller._grid.setTotalCount(this.nm.controller._grid._total - row_ids.length);
@@ -1106,8 +1116,11 @@ export class et2_nextmatch extends et2_DOMWidget implements et2_IResizeable, et2
 		}
 
 		// Bind so we can get the queued data when tab is re-activated
-		let tab = jQuery(this.getInstanceManager().DOMContainer.parentNode)
-			.one('show.et2_nextmatch', this._queue_refresh_callback.bind(this));
+		// only do it for this._queued_refreshes === [], to not install multiple event-handlers (jQuery.one() does NOT help here!)
+		if (Array.isArray(this._queued_refreshes) && !this._queued_refreshes.length)
+		{
+			jQuery(this.getInstanceManager().DOMContainer.parentNode).one('show.et2_nextmatch', this._queue_refresh_callback.bind(this));
+		}
 
 
 		// Edit means refresh everything, so no need to keep queueing
@@ -1148,7 +1161,7 @@ export class et2_nextmatch extends et2_DOMWidget implements et2_IResizeable, et2
 		{
 			if(types[type].length > 0)
 			{
-				// Fire each change type once will all changed IDs
+				// Fire each change type once with all changed IDs
 				this.refresh(types[type].filter((v, i, a) => a.indexOf(v) === i), type);
 			}
 		}
@@ -1618,7 +1631,7 @@ export class et2_nextmatch extends et2_DOMWidget implements et2_IResizeable, et2
 		jQuery.merge(colDisplay, custom_fields);
 
 		// Update query value, so data source can use visible columns to exclude expensive sub-queries
-		const oldCols = this.activeFilters.selectcols ? this.activeFilters.selectcols : [];
+		const oldCols = this.get_columns();
 
 		this.activeFilters.selectcols = this.sortedColumnsList.length > 0 ? this.sortedColumnsList : colDisplay;
 
@@ -2148,7 +2161,7 @@ export class et2_nextmatch extends et2_DOMWidget implements et2_IResizeable, et2
 			if(colName)
 			{
 				// Server side wants each cf listed as a seperate column
-				if(widget.instanceOf(et2_nextmatch_customfields))
+				if(widget.instanceOf(et2_nextmatch_customfields) && visibility[colMgr.columns[i].id].visible && visibility[colMgr.columns[i].id].enabled)
 				{
 					// Just the ID for server side, not the whole nm name - some apps use it to skip custom fields
 					colName = widget.id;
@@ -2157,7 +2170,7 @@ export class et2_nextmatch extends et2_DOMWidget implements et2_IResizeable, et2
 						if(widget.options.fields[name]) custom_fields.push(et2_nextmatch_customfields.PREFIX + name);
 					}
 				}
-				if(visibility[colMgr.columns[i].id].visible)
+				if(visibility[colMgr.columns[i].id].visible && visibility[colMgr.columns[i].id].enabled)
 				{
 					colDisplay.push(colName);
 				}
@@ -2180,6 +2193,7 @@ export class et2_nextmatch extends et2_DOMWidget implements et2_IResizeable, et2
 	{
 		const columnMgr = this.dataview.getColumnMgr();
 		const visibility = {};
+		let need_reload = false;
 
 		// Initialize to false
 		for(var i = 0; i < columnMgr.columns.length; i++)
@@ -2201,15 +2215,17 @@ export class et2_nextmatch extends et2_DOMWidget implements et2_IResizeable, et2
 			{
 				visibility[columnMgr.columns[i].id].visible = true;
 			}
+
 			// Custom fields are listed seperately in column list, but are only 1 column
 			if(widget && widget.instanceOf(et2_nextmatch_customfields))
 			{
 
 				// Just the ID for server side, not the whole nm name - some apps use it to skip custom fields
 				colName = widget.id;
+				let show_custom_fields = false;
 				if(column_list.indexOf(colName) !== -1)
 				{
-					visibility[columnMgr.columns[i].id].visible = true;
+					show_custom_fields = true;
 				}
 
 				const cf = this.columns[i].widget.options.customfields;
@@ -2227,12 +2243,28 @@ export class et2_nextmatch extends et2_DOMWidget implements et2_IResizeable, et2
 					visible[column_list[j].substring(1)] = true;
 				}
 				(<et2_nextmatch_customfields><unknown>widget).set_visible(visible);
+				visibility[columnMgr.columns[i].id].visible = show_custom_fields && Object.values(visible).filter(f => f).length > 0;
+			}
+			this.columns[i].visible = visibility[columnMgr.columns[i].id]?.visible;
+
+			if(this.dataview.rowProvider._columnIds.indexOf(columnMgr.columns[i].id) == -1)
+			{
+				need_reload = need_reload || this.columns[i].visible;
 			}
 		}
+
 		columnMgr.setColumnVisibilitySet(visibility);
 
 		// We don't want to update user's preference, so directly update
 		this.dataview._updateColumns();
+
+		if(need_reload)
+		{
+			// We need to change preferences and reload to get columns that were hidden during the first load
+			this.dataview.updateColumns();
+			this.getInstanceManager().submit();
+			return;
+		}
 
 		// Allow column widgets a chance to resize
 		this.iterateOver(function(widget)
@@ -3464,7 +3496,6 @@ export class et2_nextmatch_header_bar extends et2_DOMWidget implements et2_INext
 			this.category = this._build_select('cat_id', settings.cat_is_select ?
 														 'et2-select' : 'et2-select-cat', settings.cat_id, settings.cat_is_select !== true, {
 				multiple: false,
-				tags: true,
 				class: "select-cat",
 				value_class: settings.cat_id_class
 			});
@@ -3482,7 +3513,6 @@ export class et2_nextmatch_header_bar extends et2_DOMWidget implements et2_INext
 			this.filter2 = this._build_select('filter2', 'et2-select', settings.filter2,
 				settings.filter2_no_lang, {
 					multiple: false,
-					tags: settings.filter2_tags,
 					class: "select-cat",
 					value_class: settings.filter2_class
 				});
@@ -3689,7 +3719,7 @@ export class et2_nextmatch_header_bar extends et2_DOMWidget implements et2_INext
 			// Not mail, since it needs to be different
 			&& !['mail'].includes(this.getInstanceManager().app))
 		{
-			widget_options.empty_label = this.egw().lang('All categories');
+			widget_options.emptyLabel = this.egw().lang('All categories');
 		}
 
 		// Create widget
@@ -3741,11 +3771,11 @@ export class et2_nextmatch_header_bar extends et2_DOMWidget implements et2_INext
 			});
 		}
 		// Sometimes the filter does not display the current value
-		// Call sync to try to get it to display
+		// Work-around: Request another update to get it to display
 		select.updateComplete.then(async() =>
 		{
 			await select.updateComplete;
-			select.syncItemsFromValue();
+			select.requestUpdate("value");
 		})
 		return select;
 	}

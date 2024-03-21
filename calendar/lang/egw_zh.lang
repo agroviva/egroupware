@@ -1,23 +1,35 @@
 %1 %2 in %3	calendar	zh	在%3的%1%2
+%1 event(s) %2, %3 failed because of insufficient rights !!!	calendar	zh	%1 事件 %2, %3 因权限不足而失败！
 %1 hours	calendar	zh	%1小时
 %1 records imported	calendar	zh	已导入%1个记录
 %1 records read (not yet imported, you may go back and uncheck test import)	calendar	zh	已读取%1个记录 (尚未导入, 您可以返回并取消导入测试)
 %1 weeks	calendar	zh	%1 星期
 a non blocking event will not conflict with other events	calendar	zh	一个未锁定事件将不会与其它事件冲突
+a party crasher in someone who is not invited to the meeting but somehow got the invitation.	calendar	zh	闯入者指的是没有被邀请参加会议，但却莫名其妙收到邀请的人。
 accept	calendar	zh	接受
 accept or reject an invitation	calendar	zh	接受或拒绝邀请
 accepted	calendar	zh	已接受
 access denied to the calendar of %1 !!!	calendar	zh	对 %1 的日历的访问被拒绝！
+access to calendar of %1 denied!	calendar	zh	拒绝访问 %1 的日历！
 action that caused the notify: added, canceled, accepted, rejected, ...	calendar	zh	执行下列操作将发出通知：添加, 取消, 接受, 拒绝...
 actions	calendar	zh	操作
 actions...	calendar	zh	操作...
 add alarm	calendar	zh	添加闹铃
+add appointments via shortened dialog or complete edit window	calendar	zh	通过缩短的对话框或完整的编辑窗口添加约会
+add current view as favorite	calendar	zh	将当前视图添加为收藏夹
+add new alarm	calendar	zh	添加新警报
+add new event	calendar	zh	添加新预约
+add new participants or resource	calendar	zh	添加新与会者或资源
 add timesheet entry	calendar	zh	添加时间表条目
 added	calendar	zh	添加
+added by synchronization	calendar	zh	通过同步添加
+after	calendar	zh	之后
 after %1	calendar	zh	在%1以后
 after current date	calendar	zh	在当前日期之后
+age:	calendar	zh	年龄：
 alarm	calendar	zh	闹铃
 alarm added	calendar	zh	闹铃已增添
+alarm added automatic to new events before event start-time	calendar	zh	在活动开始时间之前自动为新活动添加警报
 alarm deleted	calendar	zh	闹铃以删除
 alarm for %1 at %2 in %3	calendar	zh	在%3的%1中%2闹铃
 alarm management	calendar	zh	闹铃管理
@@ -25,11 +37,18 @@ alarms	calendar	zh	闹铃
 all categories	calendar	zh	所有类别
 all day	calendar	zh	所有日期
 all events	calendar	zh	所有事件
+all exceptions are converted into single events.	calendar	zh	所有例外情况都会转换为单个事件。
 all future	calendar	zh	所有未来
+all incl. rejected	calendar	zh	包括被拒绝的所有事件
 all participants	calendar	zh	所有参与者
+allow booking requests from any user when creating events?	calendar	zh	创建活动时是否允许来自任何用户的预订请求？
+allow party crashers with email that match the following regular expression	calendar	zh	允许使用符合以下正则表达式的电子邮件的闯入者
 allows to edit the event again	calendar	zh	允许再次编辑事件
 always	calendar	zh	永远
+always use full edit dialog	calendar	zh	始终使用完整的编辑对话框
+always use the full edit dialog, not this little dialog	calendar	zh	始终使用完整的编辑对话框，而不是这个小对话框
 apply the changes	calendar	zh	应用修改
+attention	calendar	zh	注意事项
 back half a month	calendar	zh	上半个月
 back one month	calendar	zh	上个月
 before %1	calendar	zh	在%1之前
@@ -39,6 +58,7 @@ birthday	calendar	zh	生日
 birthdays	admin	zh	生日
 busy	calendar	zh	忙碌
 by	calendar	zh	于
+by default (nothing is set here) egroupware allows only the organizer/owner to add them.	calendar	zh	默认情况下（此处未作任何设置），EGroupware 只允许组织者/所有者添加他们。
 calendar csv export	calendar	zh	日历 CSV 导出
 calendar event	calendar	zh	日历事件
 calendar fields:	calendar	zh	日历字段：
@@ -48,6 +68,8 @@ calendar settings	admin	zh	日历设置
 calendar-fieldname	calendar	zh	日历-字段名
 can't add alarms in the past !!!	calendar	zh	不能在过去添加闹铃！
 canceled	calendar	zh	取消
+category report	calendar	zh	类别报告
+changed event-data applied	calendar	zh	应用更改后的事件数据
 charset of file	calendar	zh	文件的字符集
 check all	calendar	zh	全选
 choose a category	calendar	zh	选择分类
@@ -68,6 +90,7 @@ csv-filename	calendar	zh	CSV-字段名
 custom	calendar	zh	自定义
 custom fields	common	zh	自定义字段
 daily	calendar	zh	每日
+date range	calendar	zh	日期范围
 day	calendar	zh	日
 days	calendar	zh	日
 days of the week for a weekly repeated event	calendar	zh	一个每周重复事件在星期几
@@ -96,6 +119,7 @@ edit exception	calendar	zh	编辑例外
 edit series	calendar	zh	编辑系列
 edit this event	calendar	zh	编辑这一事件
 edit this series of recurring events	calendar	zh	编辑这个系列循环日历
+email address migration	calendar	zh	电子邮件地址迁移
 empty for all	calendar	zh	全部清空
 end	calendar	zh	终止
 end date/time	calendar	zh	终止日期/时间
@@ -104,6 +128,7 @@ enddate / -time of the meeting, eg. for more then one day	calendar	zh	终止日�
 enddate of the export	calendar	zh	导出终止日期
 ends	calendar	zh	终止日期
 error adding the alarm	calendar	zh	新闹铃错误
+error notifying %1	calendar	zh	通知 %1 出错
 error: importing the ical	calendar	zh	错误：导入 iCal
 error: no participants selected !!!	calendar	zh	错误：没有选择参与者！
 error: saving the event !!!	calendar	zh	错误： 保存事件时！
@@ -116,6 +141,7 @@ event will occupy the whole day	calendar	zh	事件将占用整天时间
 exception	calendar	zh	例外
 exception created - you can now edit or delete it	calendar	zh	例外已建立 - 现在您可以编辑或删除它
 exceptions	calendar	zh	例外
+exclude weekend	calendar	zh	不包括周末
 execute a further action for this entry	calendar	zh	为这一输入执行进一步的操作
 existing links	calendar	zh	已存在链接
 extended	calendar	zh	扩展
@@ -163,7 +189,7 @@ how many minutes should each interval last?	calendar	zh	每个间隔时间应该
 how many separate calendars to show before merging them together	calendar	zh	显示综合日历视图的最小用户数，如果选择的用户较少，日历将分别显示为周或日视图。
 how many weeks should the multiple week view show?	calendar	zh	多重周视图将显示多少个星期？
 ical	calendar	zh	iCal
-ical / rfc2445	calendar	zh	iCal / rfc2445
+ical / rfc2445	calendar	zh	iCal / RFC2445
 ical cannot change the owner of an existing event.  this applies to new events only.	calendar	zh	iCal不能改变现有事件的所有者。这只适用于新事件。
 ical export	calendar	zh	iCal 导出
 ical file	calendar	zh	iCal 文件
@@ -191,6 +217,7 @@ mail all participants	calendar	zh	发邮件给所有参与者
 make freebusy information available to not logged in persons?	calendar	zh	将可用的空闲/繁忙信息开放给未注册的人？
 manage mapping	calendar	zh	管理匹配
 maximum available quantity of %1 exceeded!	calendar	zh	超过 %1 的最大可用数量！
+min days	calendar	zh	最小天数
 minimum number of users for showing day view as consolidated.	calendar	zh	合并显示日视图的最少用户数。
 minimum number of users for showing week view as consolidated.	calendar	zh	合并显示周视图的最少用户数。
 minutes	calendar	zh	分钟
@@ -220,7 +247,10 @@ notification messages for modified events	calendar	zh	修改事件的通知消�
 notification messages for uninvited participants	calendar	zh	拒绝参与的通知消息
 notification messages for your alarms	calendar	zh	您的闹铃的通知消息
 notification messages for your responses	calendar	zh	您的回复的通知消息
+notify	calendar	zh	通知
+notify all externals (non-users) about this event	calendar	zh	将此事件通知所有外部人员（非用户
 number of records to read (%1)	calendar	zh	读取的记录数 (%1)
+number of resources to be booked	calendar	zh	要预订的资源数量
 observance rule	calendar	zh	遵循规则
 occurence	calendar	zh	期间
 old startdate	calendar	zh	旧的开始日期
@@ -235,6 +265,7 @@ one week	calendar	zh	一星期
 one year	calendar	zh	一年
 only the initial date of that recurring event is checked!	calendar	zh	仅当重复事件的初始日期！
 open todo's:	calendar	zh	待办事项
+output unit	calendar	zh	输出单位
 overlap holiday	calendar	zh	重迭假日
 participants	calendar	zh	参与者
 participants uninvited from an event	calendar	zh	从一事件拒绝参与者
@@ -249,14 +280,17 @@ preselected group for entering the planner	calendar	zh	为计划预先选定参�
 previous	calendar	zh	上一个
 private and global public	calendar	zh	私有和全局公用
 private and group public	calendar	zh	私有和群组公用
+private event	calendar	zh	私人活动
 private only	calendar	zh	仅私有
 quantity	calendar	zh	数量
 re-edit event	calendar	zh	重新编辑事件
 receive email updates	calendar	zh	接收更新邮件
 receive summary of appointments	calendar	zh	接收约会概要
+recordings	calendar	zh	记录
 recurrence	calendar	zh	重复
 recurring event	calendar	zh	重复事件
 rejected	calendar	zh	拒绝
+removes the event from my calendar	calendar	zh	从我的日历中删除活动
 repeat days	calendar	zh	重复天数
 repeat the event until which date (empty means unlimited)	calendar	zh	重复事件终止日期(空白表示无限)
 repeat type	calendar	zh	重复类型
@@ -264,6 +298,8 @@ repeating event information	calendar	zh	重复事件信息
 repeating interval, eg. 2 to repeat every second week	calendar	zh	重复间隔，例如：2代表每隔两周重复一次
 repetition	calendar	zh	重复
 repetitiondetails (or empty)	calendar	zh	重复细节 (或空白)
+replying "%1" is not a participant of the event! only continue if you want to add as new participant.	calendar	zh	回复"%1 "不是该活动的参与者！如果您想添加新的参与者，请继续。
+report	calendar	zh	报告
 requested	calendar	zh	请求
 reset	calendar	zh	重置
 resources	calendar	zh	资源
@@ -279,11 +315,15 @@ select multiple contacts for a further action	calendar	zh	为下一步操作选�
 select resources	calendar	zh	选择资源
 select who should get the alarm	calendar	zh	选择应通知者
 selected range	calendar	zh	选择的范围
+send notifications	calendar	zh	发送通知
+send notifications to users right now	calendar	zh	立即向参与者发送通知
 set new events to private	calendar	zh	设置新事件为私有
 setting lock time calender	admin	zh	设定日历的数据锁定时间为(默认为1秒)
 should new events created as private by default ?	calendar	zh	默认新增的事件为私有？
 should the planner display an empty row for users or categories without any appointment.	calendar	zh	计划应该为没有任何约会的用户或类别显示一个空白行。
 should the status of the event-participants (accept, reject, ...) be shown in brackets after each participants name ?	calendar	zh	事件参与者的状态(接受，拒绝...)应该显示在每个参与者名字后面的方括号里吗？
+show %1 from %2	calendar	zh	从 %2 显示 %1
+show birthdays as all day non-blocking events as well as via mouseover of the date.	calendar	zh	显示为全天无阻塞活动，也可通过鼠标移动日期显示。
 show birthdays from addressbook	admin	zh	从通讯录显示生日
 show empty rows in planner	calendar	zh	在计划中显示空白行
 show list of upcoming events	calendar	zh	显示即将到来的事件列表
@@ -291,6 +331,8 @@ show only the date, not the year	admin	zh	只显示日期，不显示年份
 show this month	calendar	zh	显示这个月
 show this week	calendar	zh	显示这一周
 single event	calendar	zh	单一事件
+single participant	calendar	zh	单个参与者
+sort by	calendar	zh	排序方式
 start	calendar	zh	开始
 start date/time	calendar	zh	开始日期/时间
 startdate	calendar	zh	起始日期
@@ -298,11 +340,17 @@ startdate / -time	calendar	zh	开始日期 / -时间
 startdate and -time of the search	calendar	zh	搜索的开始日期和 -时间
 startdate of the export	calendar	zh	导出的开始日期
 startrecord	calendar	zh	开始记录
+status	calendar	zh	状态
 status changed	calendar	zh	状态被改变
 submit to repository	calendar	zh	提交到知识库
 sun	calendar	zh	日
 tentative	calendar	zh	暂定的
 test import (show importable records <u>only</u> in browser)	calendar	zh	测试导入(<u>只有</u>在浏览器中显示可以导入的纪录)
+the apple ical apps use this color to display events from this calendar.	calendar	zh	Apple iCal 应用程序使用这种颜色来显示该日历中的事件。
+the document can contain placeholder like {{%1}}, to be replaced with the data.	calendar	zh	文件可以包含占位符，如 {{%1}}，并用数据替换。
+the extern organizer changed the event!	calendar	zh	外部组织者更改了事件！
+the sender "%1" is not the extern organizer "%2", proceed with caution!	calendar	zh	发件人"%1 "不是外部组织者"%2"，请谨慎操作！
+the sender "%1" is not the participant replying "%2", proceed with caution!	calendar	zh	发件人"%1 "不是回复"%2 "的参与者，请谨慎操作！
 this day is shown as first day in the week or month view.	calendar	zh	这一天在周视图或是月视图中显示为第一天。
 this defines the end of your dayview. events after this time, are shown below the dayview.	calendar	zh	这定义了您的日视图的结束。在这个时间之后的事件，显示在日视图的下面。
 this defines the start of your dayview. events before this time, are shown above the dayview.<br>this time is also used as a default starttime for new events.	calendar	zh	这定义了您的日视图的开始，在这个时间之前的事件，显示在日视图的上面。<br>这个时间同样也作为新建事件的默认开始时间。
@@ -323,6 +371,7 @@ timeframe to search	calendar	zh	搜索的时段
 timezone	calendar	zh	时区
 title of the event	calendar	zh	事件标题
 to many might exceed your execution-time-limit	calendar	zh	对许多也许超出了您的执行时间极限
+toggle weekend	calendar	zh	切换周末
 translation	calendar	zh	翻译
 tue	calendar	zh	二
 two weeks	calendar	zh	两周
@@ -331,6 +380,7 @@ updated	calendar	zh	更新日期
 use end date	calendar	zh	使用结束日期
 use the selected time and close the popup	calendar	zh	使用选定的时间并关闭弹出窗口
 user or group	calendar	zh	用户或群组
+utilities	calendar	zh	实用工具
 view this event	calendar	zh	查看该事件
 views with fixed time intervals	calendar	zh	有固定时间间隔的视图
 wed	calendar	zh	三

@@ -44,12 +44,47 @@ export class EgwDragActionImplementation implements EgwActionImplementation {
         const pseudoNumRows = (_selected[0]?._context?._selectionMgr?._selectAll) ?
             _selected[0]._context?._selectionMgr?._total : _selected.length;
 
-        for (const egwActionObject of _selected) {
-            const row: Node = (egwActionObject.iface.getDOMNode()).cloneNode(true);
-            if (row) {
-                rows.push(row);
-                table.append(row);
-            }
+		// Clone nodes but use copy webComponent properties
+		const carefulClone = (node) =>
+		{
+			// Don't clone text nodes, it causes duplication in et2-description
+			if(node.nodeType == node.TEXT_NODE)
+			{
+				return;
+			}
+
+			let clone = node.cloneNode();
+
+			let widget_class = window.customElements.get(clone.localName);
+			let properties = widget_class ? widget_class.properties : [];
+			for(let key in properties)
+			{
+				clone[key] = node[key];
+			}
+			// Children
+			node.childNodes.forEach(c =>
+			{
+				const child = carefulClone(c)
+				if(child)
+				{
+					clone.appendChild(child);
+				}
+			})
+			if(widget_class)
+			{
+				clone.requestUpdate();
+			}
+			return clone;
+		}
+
+		for(const egwActionObject of _selected)
+		{
+			const row : Node = carefulClone(egwActionObject.iface.getDOMNode());
+			if(row)
+			{
+				rows.push(row);
+				table.append(row);
+			}
             index++;
             if (index == maxRows) {
                 // Label to show number of items
@@ -122,12 +157,7 @@ export class EgwDragActionImplementation implements EgwActionImplementation {
                 }
             })
             node.addEventListener("mouseup", (event) => {
-                if (_context.isSelection(event) && document.getSelection().type === 'Range') {
-                    //let the draggable be reactivated by another click up as the range selection is
-                    // not working as expected in shadow-dom as expected in all browsers
-                } else {
-                    node.setAttribute("draggable", true);
-                }
+				node.setAttribute("draggable", true);
 
                 // Set cursor back to auto. Seems FF can't handle cursor reversion
                 document.body.style.cursor = 'auto'
@@ -147,7 +177,14 @@ export class EgwDragActionImplementation implements EgwActionImplementation {
                 // and the multiple dragDropTypes (ai.ddTypes)
                 _callback.call(_context, false, ai);
 
-                if (action && egw.app_name() == 'filemanager') {
+				// Stop parent elements from also starting to drag if we're nested
+				if(ai.selected.length)
+				{
+					event.stopPropagation();
+				}
+
+				if(action && egw.app_name() == 'filemanager')
+				{
                     if (_context.isSelection(event)) return;
 
                     // Get all selected
@@ -195,9 +232,32 @@ export class EgwDragActionImplementation implements EgwActionImplementation {
 
                 event.dataTransfer.setData('application/json', JSON.stringify(data))
 
-                event.dataTransfer.setDragImage(ai.helper, 12, 12);
+				// Wait for any webComponents to finish
+				let wait = [];
+				const webComponents = [];
+				const check = (element) =>
+				{
+					if(typeof element.updateComplete !== "undefined")
+					{
+						webComponents.push(element)
+						element.requestUpdate();
+						wait.push(element.updateComplete);
+					}
+					element.childNodes.forEach(child => check(child));
+				}
+				check(ai.helper);
+				// Clumsily force widget update, since we can't do it async
+				Promise.all(wait).then(() =>
+				{
+					wait = [];
+					webComponents.forEach(e => wait.push(e.updateComplete));
+					Promise.all(wait).then(() =>
+					{
+						event.dataTransfer.setDragImage(ai.helper, 12, 12);
+					});
+				});
 
-                this.setAttribute('data-egwActionObjID', JSON.stringify(data.selected));
+				this.setAttribute('data-egwActionObjID', JSON.stringify(data.selected));
             };
 
             const dragend = (_) => {
@@ -207,7 +267,9 @@ export class EgwDragActionImplementation implements EgwActionImplementation {
                 if (draggable) draggable.classList.remove('drag--moving');
                 // cleanup drop hover class from all other DOMs if there's still anything left
                 Array.from(document.getElementsByClassName('et2dropzone drop-hover')).forEach(_i=>{_i.classList.remove('drop-hover')})
-            };
+				// Clean up selected
+				ai.selected = [];
+			};
 
             // Drag Event listeners
             node.addEventListener('dragstart', dragstart, false);

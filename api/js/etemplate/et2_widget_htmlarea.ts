@@ -100,6 +100,12 @@ export class et2_htmlarea extends et2_editableWidget implements et2_IResizeable
 			'type': 'string',
 			'default': 'floating',
 			'description': 'It allows to extend the toolbar to accommodate the overflowing toolbar buttons. {floating, sliding, scrolling, wrap}'
+		},
+		applyDefaultFont: {
+			name: 'apply default font and size',
+			type: 'boolean',
+			default: false,
+			description: 'Add default font and size as style attribute to the markup. Also ensures all non-block elements are wrapped in p.'
 		}
 	};
 
@@ -507,12 +513,19 @@ export class et2_htmlarea extends et2_editableWidget implements et2_IResizeable
 		this.htmlNode = null;
 		super.destroy();
 	}
+
 	set_value(_value)
 	{
 		this._oldValue = _value;
 		if (this.editor)
 		{
 			this.editor.setContent(_value);
+
+			// need to defer a little, so TinyMCE does its modifications we want to counter
+			if (this.options.applyDefaultFont)
+			{
+				window.setTimeout(() => this.wrapTextNodes(), 10);
+			}
 		}
 		else
 		{
@@ -528,13 +541,62 @@ export class et2_htmlarea extends et2_editableWidget implements et2_IResizeable
 		this.value = _value;
 	}
 
-	getValue()
+	/**
+	 * @param boolean submit_value true: call by etemplate2.(getValues|submit|postSubmit)()
+	 */
+	getValue(submit_value? : boolean)
 	{
 		if (this.editor)
 		{
+			// not always applying defaut font, as getValue() is called a lot, e.g. to test input is dirty
+			if (this.options.applyDefaultFont && submit_value)
+			{
+				this.applyDefaultFont();
+			}
 			return this.editor.getContent();
 		}
 		return this.options.readonly ? this.value : this.htmlNode.val();
+	}
+
+	/**
+	 * Wrap text-nodes and other non-block elements with <p></p> as TinyMCE produces them, if we use small paragraphs
+	 *
+	 * This is done to create valid HTML and allow to set our default font, see applyDefaultFont(),
+	 * which can NOT set a font on text-nodes or br!
+	 */
+	wrapTextNodes()
+	{
+		const body : HTMLBodyElement = this.editor?.editorContainer.querySelector('iframe').contentDocument.querySelector('body');
+		if (!body) return false;
+
+		let toWrap : ChildNode[] = [];
+		body.childNodes.forEach((node) =>
+		{
+			const text_non_block_node = node.nodeType === node.TEXT_NODE ||
+				node.nodeType === node.ELEMENT_NODE && typeof node.computedStyleMap !== 'undefined' && node.computedStyleMap().get('display')?.value !== 'block';
+			if (text_non_block_node)
+			{
+				toWrap.push(node);
+			}
+			if ((!text_non_block_node || node === body.lastChild) && toWrap.length)
+			{
+				const wrap = body.ownerDocument.createElement('p');
+				toWrap.forEach((node) =>
+				{
+					wrap.appendChild(node === toWrap[0] ?
+						body.replaceChild(wrap, node) :
+						body.removeChild(node));
+				});
+				toWrap = [];
+			}
+		});
+		// TinyMCE inserts a BR in the first P --> remove it, if it's not the only child, as it is not wanted (moves the text down on each submit)
+		const firstChild = body.firstChild;
+		if (firstChild.nodeName === 'P' && firstChild.firstChild !== firstChild.lastChild && firstChild.firstChild.nodeName === 'BR')
+		{
+			firstChild.removeChild(firstChild.firstChild);
+		}
+		return true;
 	}
 
 	/**
@@ -542,7 +604,12 @@ export class et2_htmlarea extends et2_editableWidget implements et2_IResizeable
 	 */
 	applyDefaultFont()
 	{
-		const edit_area = this.editor.editorContainer.querySelector('iframe').contentDocument;
+		const edit_area = this.editor?.editorContainer.querySelector('iframe').contentDocument;
+		if (!edit_area) return false;
+
+		// we first need to wrap all text and non-block elements in p, to be able to set a font
+		this.wrapTextNodes();
+
 		const font_family = egw.preference('rte_font', 'common') || 'arial, helvetica, sans-serif';
 		edit_area.querySelectorAll('h1:not([style*="font-family"]),h2:not([style*="font-family"]),h3:not([style*="font-family"]),h4:not([style*="font-family"]),h5:not([style*="font-family"]),h6:not([style*="font-family"]),' +
 			'div:not([style*="font-family"]),li:not([style*="font-family"]),p:not([style*="font-family"]),blockquote:not([style*="font-family"]),' +
@@ -556,6 +623,7 @@ export class et2_htmlarea extends et2_editableWidget implements et2_IResizeable
 		{
 			elem.style.fontSize = font_size;
 		});
+		return true;
 	}
 
 	/**

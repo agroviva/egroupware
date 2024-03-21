@@ -1,10 +1,15 @@
 import {et2_IInput, et2_IInputNode, et2_ISubmitListener} from "../et2_core_interfaces";
 import {Et2Widget} from "../Et2Widget/Et2Widget";
-import {css, dedupeMixin, LitElement, PropertyValues} from "@lion/core";
+import {css, LitElement, PropertyValues} from "lit";
 import {Required} from "../Validators/Required";
 import {ManualMessage} from "../Validators/ManualMessage";
 import {LionValidationFeedback, Validator} from "@lion/form-core";
 import {et2_csvSplit} from "../et2_core_common";
+import {dedupeMixin} from "@lion/core";
+import {property} from "lit/decorators/property.js";
+
+// LionValidationFeedback needs to be registered manually
+window.customElements.define('lion-validation-feedback', LionValidationFeedback);
 
 /**
  * This mixin will allow any LitElement to become an Et2InputWidget
@@ -21,6 +26,7 @@ import {et2_csvSplit} from "../et2_core_common";
 export declare class Et2InputWidgetInterface
 {
 	readonly : boolean;
+	disabled : boolean;
 	protected value : string | number | Object;
 
 	public required : boolean;
@@ -29,7 +35,7 @@ export declare class Et2InputWidgetInterface
 
 	public get_value() : any;
 
-	public getValue() : any;
+	public getValue(submit_value? : boolean) : any;
 
 	public set_readonly(boolean) : void;
 
@@ -48,6 +54,7 @@ const Et2InputWidgetMixin = <T extends Constructor<LitElement>>(superclass : T) 
 	class Et2InputWidgetClass extends Et2Widget(superclass) implements et2_IInput, et2_IInputNode, et2_ISubmitListener
 	{
 		private __readonly : boolean;
+		private __label : string = "";
 		protected _oldValue : string | number | Object;
 		protected node : HTMLElement;
 
@@ -86,7 +93,7 @@ const Et2InputWidgetMixin = <T extends Constructor<LitElement>>(superclass : T) 
 					width: 100%;
 				  }
 
-				  .form-field__feedback {
+				  .form-control__help-text {
 					position: relative;
 				  }
 				`
@@ -181,7 +188,8 @@ const Et2InputWidgetMixin = <T extends Constructor<LitElement>>(superclass : T) 
 			this.defaultValidators = [];
 			this._messagesHeldWhileFocused = [];
 
-			this.__readonly = false;
+			this.readonly = false;
+			this.required = false;
 			this._oldValue = this.getValue();
 
 			this.isSlComponent = typeof (<any>this).handleChange === 'function';
@@ -217,7 +225,7 @@ const Et2InputWidgetMixin = <T extends Constructor<LitElement>>(superclass : T) 
 		 * A property has changed, and we want to make adjustments to other things
 		 * based on that
 		 *
-		 * @param {import('@lion/core').PropertyValues } changedProperties
+		 * @param changedProperties
 		 */
 		updated(changedProperties : PropertyValues)
 		{
@@ -354,18 +362,29 @@ const Et2InputWidgetMixin = <T extends Constructor<LitElement>>(superclass : T) 
 			this.requestUpdate("readonly");
 		}
 
-		public get readonly() { return this.__readonly};
+		public get readonly()
+		{
+			return this.__readonly;
+		}
 
-		set readOnly(new_value) {this.readonly = new_value;}
+		set readOnly(new_value)
+		{
+			this.readonly = new_value;
+		}
 
 		/**
 		 *  Lion mapping
 		 * @deprecated
 		 */
 		get readOnly()
-		{ return this.readonly};
+		{
+			return this.readonly;
+		}
 
-		getValue()
+		/**
+		 * @param boolean submit_value true: call by etemplate2.(getValues|submit|postSubmit)()
+		 */
+		getValue(submit_value? : boolean)
 		{
 			return this.readonly || this.disabled ? null : (
 				// Give a clone of objects or receiver might use the reference
@@ -374,12 +393,14 @@ const Et2InputWidgetMixin = <T extends Constructor<LitElement>>(superclass : T) 
 		}
 
 		/**
+		 * The label of the widget
 		 * Legacy support for labels with %s that get wrapped around the widget
 		 *
 		 * Not the best way go with webComponents - shouldn't modify their DOM like this
 		 *
 		 * @param new_label
 		 */
+		@property()
 		set label(new_label : string)
 		{
 			if(!new_label || !new_label.includes("%s"))
@@ -488,7 +509,9 @@ const Et2InputWidgetMixin = <T extends Constructor<LitElement>>(superclass : T) 
 
 			// Set attributes for the form / autofill.  It's the individual widget's
 			// responsibility to do something appropriate with these properties.
-			if(this.autocomplete == "on" && window.customElements.get(this.localName).getPropertyOptions("name") != "undefined")
+			if(this.autocomplete == "on" && window.customElements.get(this.localName).getPropertyOptions("name") != "undefined" &&
+				this.getArrayMgr("content") !== null
+			)
 			{
 				this.name = this.getArrayMgr("content").explodeKey(this.id).pop();
 			}
@@ -566,11 +589,11 @@ const Et2InputWidgetMixin = <T extends Constructor<LitElement>>(superclass : T) 
 			validators.map(async validator =>
 			{
 				let values = this.getValue();
-				if(!Array.isArray(values))
+				if(values !== null && !Array.isArray(values))
 				{
 					values = [values];
 				}
-				if(!values.length)
+				if(values !== null && !values.length)
 				{
 					values = [''];
 				}	// so required validation works
@@ -585,7 +608,7 @@ const Et2InputWidgetMixin = <T extends Constructor<LitElement>>(superclass : T) 
 				}
 					// Only validate if field is required, or not required and has a value
 				// Don't bother to validate empty fields
-				else if(this.required || !this.required && this.getValue() != '')
+				else if(this.required || !this.required && this.getValue() != '' && this.getValue() !== null)
 				{
 					// Validate each individual item
 					values.forEach((value) => doCheck(value, validator));
@@ -693,6 +716,6 @@ const Et2InputWidgetMixin = <T extends Constructor<LitElement>>(superclass : T) 
 		}
 	}
 
-	return Et2InputWidgetClass;
+	return Et2InputWidgetClass as Constructor & T;
 }
 export const Et2InputWidget = dedupeMixin(Et2InputWidgetMixin);

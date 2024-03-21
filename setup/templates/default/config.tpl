@@ -274,7 +274,7 @@
 
    <tr class="row_off">
     <td>{lang_Add_auto-created_users_to_this_group_('Default'_will_be_attempted_if_this_is_empty.)}:</td>
-    <td><input name="newsettings[default_group_lid]" value="{value_default_group_lid}" /></td>
+    <td><input name="newsettings[default_group_lid]" value="{value_default_group_lid}" placeholder="Default" /></td>
    </tr>
 
    <tr class="row_on">
@@ -430,7 +430,12 @@
      <td>
      	{lang_Group_context}: ({lang_leave_empty_to_use_default})
      </td>
-     <td><input name="newsettings[ads_group_context]" value="{value_ads_group_context}" size="80" /></td>
+     <td>
+        <input name="newsettings[ads_group_context]" value="{value_ads_group_context}" size="80" />
+        <input type="hidden" value="" name="newsettings[ads_group_extra_types]"/>
+        <label><input type="checkbox" value="distributionlists" {checked_ads_group_extra_types_distributionlists} name="newsettings[ads_group_extra_types]"/>
+            {lang_distribution-lists too}</label>
+     </td>
    </tr>
    <tr class="row_on">
      <td>{lang_Additional_user_filter_(optional)}:</td>
@@ -459,6 +464,34 @@
    <tr class="row_on">
      <td>scriptPath</td>
      <td><input name="newsettings[ads_new_scriptPath]" value="{value_ads_new_scriptPath}" size="40" /></td>
+   </tr>
+
+   <tr class="row_off">
+    <td colspan="2">&nbsp;</td>
+   </tr>
+
+   <tr class="th">
+    <td colspan="2">
+        <b>{lang_If_using_OpenIDConnect_(authentication as client agains an other OIDC IdP)}:</b><br/>
+        {lang_The_OIDC_IdP_must_support_autoconfiguration_under_the_below_given_URL}: /.well-known/openid-configuration<br/>
+        {lang_EGroupware's_callback_URL_is_the_one_of_the_login_page}: <a href="{value_webserver_url}/login.php">{lang_Callback_URL}</a>
+    </td>
+   </tr>
+   <tr class="row_on">
+    <td>{lang_Label_to_display_as_option_on_login_page}:<br/>{lang_or_leave_empty_and_select_OpenIDConnect_as_authentication_type_above_for_single_sign_on}</td>
+    <td><input name="newsettings[openidconnect_discovery]" placeholder="{lang_OpenIDConnect_Login}" value="{value_openidconnect_discovery}" size="20" /></td>
+   </tr>
+   <tr class="row_off">
+     <td>{lang_URL_of_the_IdP_(without_path)}:</td>
+     <td><input name="newsettings[oic_provider]" value="{value_oic_provider}" size="80" /></td>
+   </tr>
+   <tr class="row_on">
+     <td>{lang_Client_ID}:</td>
+     <td><input name="newsettings[oic_client_id]" value="{value_oic_client_id}" size="40" /></td>
+   </tr>
+   <tr class="row_off">
+     <td>{lang_Client_secret}:</td>
+     <td><input type="password" name="newsettings[oic_client_secret]" value="{value_oic_client_secret}" size="40" /></td>
    </tr>
 
    <tr class="row_off">
@@ -508,7 +541,7 @@
     <td>{lang_How_frequent_should_the_import_run?}:</td>
     <td>
      {lang_Every}
-     <input type="number" name="newsettings[account_import_frequency]" style="width: 3em" value="{value_account_import_frequency}"/>
+     <input type="number" name="newsettings[account_import_frequency]" style="width: 3em" value="{value_account_import_frequency}" step="0.1"/>
      {lang_hours_at}
      <input type="time" name="newsettings[account_import_time]" value="{value_account_import_time}"/>
      {lang_Log-Level}: <select name="newsettings[account_import_loglevel]">

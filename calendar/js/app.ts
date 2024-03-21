@@ -1708,7 +1708,7 @@ export class CalendarApp extends EgwApp
 			// Make the Id from selected button by checking the index
 			var selectedId = _widget.id.match(/^select\[([0-9])\]$/i)[1];
 
-			var sTime = <et2_date> this.et2.getWidgetById(selectedId+'start');
+			var sTime = <Et2Select><unknown>this.et2.getWidgetById(selectedId + 'start');
 
 			//check the parent window is still open before to try to access it
 			if (window.opener && sTime)
@@ -3632,7 +3632,7 @@ export class CalendarApp extends EgwApp
 		{
 			this._group_query_cache[cache_key] = this.egw.request("calendar.calendar_owner_etemplate_widget.ajax_owner", [groups]).then((data) =>
 			{
-				options = options.concat(Object.values(data));
+				options = option_owner.select_options.concat(Object.values(data));
 				option_owner.select_options = options;
 			}).finally(() =>
 			{

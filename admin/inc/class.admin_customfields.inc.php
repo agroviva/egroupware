@@ -44,6 +44,11 @@ class admin_customfields
 	protected $use_private = false;
 
 	/**
+	 * Allow custom fields to be readonly for certain users/groups
+	 */
+	protected $use_readonly = false;
+
+	/**
 	* userdefiened types e.g. type of infolog
 	*
 	* @var array
@@ -134,7 +139,7 @@ class admin_customfields
 		$this->use_private = !empty($_GET['use_private']) && $_GET['use_private'] !== 'undefined' || !empty($content['use_private']);
 
 		// Read fields, constructor doesn't always know appname
-		$this->fields = Api\Storage\Customfields::get($this->appname,true);
+		$this->fields = Api\Storage\Customfields::get($this->appname,true, null, null, null);
 
 		$this->tmpl = new Etemplate();
 		$this->tmpl->read('admin.customfields');
@@ -341,9 +346,10 @@ class admin_customfields
 			die(lang('Error! No appname found'));
 		}
 		$this->use_private = !isset($_GET['use_private']) || (boolean)$_GET['use_private'] || !empty($content['use_private']);
+		$this->use_readonly = !isset($_GET['use_readonly']) || (boolean)$_GET['use_readonly'] || !empty($content['use_readonly']);
 
 		// Read fields, constructor doesn't always know appname
-		$this->fields = Api\Storage\Customfields::get($this->appname,true);
+		$this->fields = Api\Storage\Customfields::get($this->appname,true, null, null, null);
 
 		// Update based on info returned from template
 		if (is_array($content))
@@ -376,6 +382,13 @@ class admin_customfields
 						if($content['cf_values'][0] === '@')
 						{
 							$values['@'] = substr($content['cf_values'], $content['cf_values'][1] === '=' ? 2:1);
+						}
+						elseif (isset($GLOBALS['egw_info']['apps'][$content['cf_type']]))
+						{
+							if (!empty($content['cf_values']) && ($content['cf_values'][0] !== '{' || ($values=json_decode($content['cf_values'])) === null))
+							{
+								Api\Etemplate::set_validation_error('cf_values', lang('Invalid JSON object!'));
+							}
 						}
 						else
 						{
@@ -446,6 +459,7 @@ class admin_customfields
 		//echo 'customfields=<pre style="text-align: left;">'; print_r($this->fields); echo "</pre>\n";
 		$content['cf_order'] = (count($this->fields)+1) * 10;
 		$content['use_private'] = $this->use_private;
+		$content['use_readonly'] = $this->use_readonly;
 
 		if($cf_id)
 		{
@@ -459,7 +473,10 @@ class admin_customfields
 			{
 				$readonlys['cf_name'] = true;
 			}
-			$content['cf_values'] = json_decode($content['cf_values'], true);
+			if (!isset($GLOBALS['egw_info']['apps'][$content['cf_type']]))
+			{
+				$content['cf_values'] = json_decode($content['cf_values'], true);
+			}
 		}
 		else
 		{

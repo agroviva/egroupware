@@ -17,6 +17,7 @@
 , stati of participants reset	calendar	it	, stato dei partecipanti reimpostato.
 a list of email addresses of all participants who have not declined	calendar	it	Un elenco di indirizzi email di tutti i partecipanti che non hanno declinato l'invito
 a non blocking event will not conflict with other events	calendar	it	Un evento non bloccante non sarà in conflitto con altri eventi
+a party crasher in someone who is not invited to the meeting but somehow got the invitation.	calendar	it	Un party crasher è una persona che NON è invitata alla riunione ma che in qualche modo ha ricevuto l'invito.
 accept	calendar	it	Accetta
 accept or reject an invitation	calendar	it	Accetta o o rifiuta un invito
 accepted	calendar	it	Accettato
@@ -29,6 +30,7 @@ add alarm	calendar	it	Aggiungi Allarme
 add appointments via shortened dialog or complete edit window	calendar	it	Aggiunti appuntamenti con una finestra di dialogo più corta oppure con la finestra completa
 add current view as favorite	calendar	it	Aggiungi questa visualizzazione come preferita
 add new alarm	calendar	it	Aggiungi allarme
+add new event	calendar	it	Aggiungi un nuovo appuntamento
 add new participants or resource	calendar	it	Aggiungi nuovi partecipanti o risorse
 add timesheet entry	calendar	it	Aggiungi foglio ore
 added	calendar	it	Aggiunto
@@ -52,16 +54,18 @@ all future	calendar	it	Tutti nel futuro
 all incl. rejected	calendar	it	Tutti, incusi i rigettati
 all participants	calendar	it	Tutti i partecipanti
 allow booking requests from any user when creating events?	calendar	it	Permettere richieste di prenotazione da qualsiasi utente quando si creano eventi?
+allow party crashers with email that match the following regular expression	calendar	it	Consentite gli imbucati con e-mail che corrispondono alla seguente espressione regolare
 allow users to prevent change notifications ('do not notify')	calendar	it	Permetti agli utenti di modificare le notifiche 'Non notificare'
 allows to edit the event again	calendar	it	Permette di modificare ancora l'evento
 always	calendar	it	Sempre
 always use full edit dialog	calendar	it	Usa sempre l'immissione rapida
 always use the full edit dialog, not this little dialog	calendar	it	Usa sempre l'immissione completa
 apply the action on the whole query, not only the shown events	calendar	it	Applica all'intera interrogazione, NON solo agli eventi mostrati
-apply the changes	calendar	it	apllica le modifiche
+apply the changes	calendar	it	Apllica le modifiche
 appointment settings	calendar	it	Impostazioni appuntamenti
 as an alternative you can %1download a mysql dump%2 and import it manually into egw_cal_timezones table.	calendar	it	Come alternativa puoi %scaricare un dump del MySQL%2 e importare manualmente nella tabella egw_cal_timezones
 at start of the event	calendar	it	all'inizio dell'evento
+attention	calendar	it	Attenzione
 automatically purge old events after	admin	it	Cancella automaticamente gli eventi vecchi dopo
 available for the first entry inside each day of week or daily table inside the selected range:	calendar	it	Disponibile per la prima immissione in ogni giorno della settimana o tabella giornaliera all'interno dell'intervallo selezionato:
 back half a month	calendar	it	indietro di metà mese
@@ -77,6 +81,7 @@ birthdays only	calendar	it	Solo compleanno
 both, holidays and birthdays	calendar	it	Sia compleanni che vacanze
 busy	calendar	it	occupato
 by	calendar	it	da
+by default (nothing is set here) egroupware allows only the organizer/owner to add them.	calendar	it	Per impostazione predefinita (non è stato impostato nulla qui), EGroupware consente solo all'organizzatore/proprietario di aggiungerli.
 calendar - list	calendar	it	Agenda - Elenco
 calendar - multi-weekly	calendar	it	Agenda - Settimanale
 calendar - planner	calendar	it	Agenda - Pianificatore
@@ -99,9 +104,12 @@ category %1 removed because of missing rights	calendar	it	Categoria %1 rimossa, 
 category acl	common	it	ACL di categoria
 category acl only restrict adding a category to an event or changing status of a participant. it does not change the visibility of an event!	calendar	it	Gli ACL di categoria, applicano restrizioni solamente all'inserimento di una categoria ad un evento oppure la modifica dello stato di un partecipante. NON modifica la visibilità di un evento!
 category automatically added to new events	calendar	it	Categoria automaticamente assegnata a nuovi eventi
+category report	calendar	it	Categoria Rapporto
 chair	calendar	it	Presiede
+change domain of participants in caldav requests	calendar	it	Modifica del dominio dei partecipanti nelle richieste CalDAV
 change history	calendar	it	Cambia storico
 change your status	calendar	it	Cambia stato
+changed event-data applied	calendar	it	Dati evento modificati applicati
 charset of file	calendar	it	Set di Caratteri del file
 check all	calendar	it	Controlla tutti
 choose a category	calendar	it	Seleziona una categoria
@@ -136,12 +144,15 @@ daily tables	calendar	it	Tabelle giornaliere
 data exchange settings	calendar	it	Impostazioni di scambio dati
 date for the day of the week	calendar	it	Data per il giorno della settimana
 date for the day of the week, available for the first entry inside each day of week or daily table inside the selected range.	calendar	it	Data per il giorno della settimana, disponibile per la prima voce in ogni giorno della settimana oppure tabella giornaliera nell'intervallo selezionato.
+date range	calendar	it	Intervallo di date
 day	calendar	it	giorno
 day of week tables	calendar	it	Tabelle giorno della settimana
 days	calendar	it	giorni
 days of the week for a weekly repeated event	calendar	it	Giorni della settimana per un evento con ricorrenza settimanale
 days repeated	calendar	it	giorni ripetuti
 dayview	calendar	it	Vista Giornaliera
+default alarm added for yourself or all participants	calendar	it	L'allarme viene inserito automaticamente per i nuovi appuntamenti.<br>Per sé o per tutti i partecipanti.
+default alarm for	calendar	it	Allarme predefinito per
 default alarm for regular events	calendar	it	Allarme predefinito per eventi regolari
 default alarm for whole-day events	calendar	it	Allarme predefinito per eventi di un giorno intero
 default appointment length (in minutes)	calendar	it	lunghezza predefinita degli appuntamenti (in minuti)
@@ -195,6 +206,7 @@ edit series	calendar	it	Modifica Serie
 edit status or alarms for this particular day	calendar	it	Modifica lo stato degli allarmi per questo giorno in particolare
 edit this event	calendar	it	Modifica questo evento
 edit this series of recurring events	calendar	it	Modifica questa serie di eventi ricorrenti
+email address migration	calendar	it	Migrazione dell'indirizzo e-mail
 empty = no alarm	calendar	it	vuoto = nessun allarme
 empty for all	calendar	it	vuoto per tutti
 empty target calendar before importing	calendar	it	Svuotare il calendario di destinazione prima di importare
@@ -231,6 +243,7 @@ example {{nenvlf role}} - if field role is not empty, set a lf without any value
 exception	calendar	it	Eccezione
 exception created - you can now edit or delete it	calendar	it	Eccezione creata - adesso puoi modificarla o eliminarla
 exceptions	calendar	it	Eccezioni
+exclude weekend	calendar	it	Escludere il fine settimana
 execute a further action for this entry	calendar	it	Esegui ancora una azione per questo inserimento
 existing links	calendar	it	Collegamenti esistenti
 exists	calendar	it	Esiste
@@ -301,7 +314,7 @@ how many weeks should the multiple week view show?	calendar	it	Quante settimane 
 how much entries to skip	calendar	it	Quanti inserimenti saltare
 html link to the current record	calendar	it	Collegamento HTML al record attuale
 ical	calendar	it	iCal
-ical / rfc2445	calendar	it	iCal / rfc2445
+ical / rfc2445	calendar	it	iCal / RFC2445
 ical cannot change the owner of an existing event.  this applies to new events only.	calendar	it	iCal non può cambiare il proprietario di un evento esistente. Questo vale solo per i nuovi eventi.
 ical export	calendar	it	Esportazione iCal
 ical file	calendar	it	file iCal
@@ -326,7 +339,7 @@ invalid email-address "%1" for user %2	calendar	it	Indirizzo email "%1" non vali
 invalid owner id: %1.  might be a bad field translation.  used %2 instead.	calendar	it	ID proprietario non valido: %1. Potrebbe essere una traduzione errata del campo. Usare %2.
 invitations	calendar	it	Inviti
 invite	common	it	Invita
-it can not read timezones from sqlite database %1!	calendar	it	Non può leggere le zone orarie dal database sqlite %1!
+it can not read timezones from sqlite database %1!	calendar	it	Non può leggere le zone orarie dal database SQLite %1!
 just me	calendar	it	Solo io
 keep exceptions	calendar	it	Mantieni le eccezioni
 keep the series unchanged.	calendar	it	Mantieni la serie
@@ -359,6 +372,7 @@ meeting request	calendar	it	Richiesta meeting
 meetingrequest to all participants	calendar	it	Richiesta di riunione a tutti i partecipanti
 merge document...	calendar	it	Unire documento...
 midnight	calendar	it	Mezzanotte
+min days	calendar	it	Giorni minimi
 minimum number of users for showing day view as consolidated.	calendar	it	Numero minimo di utenti per mostrare la vista giornaliera come consolidata.
 minimum number of users for showing week view as consolidated.	calendar	it	Numero minimo di utenti per mostrare la vista settimanale come consolidata.
 minutes	calendar	it	Minuti
@@ -433,6 +447,7 @@ only used for first viewing of calendar, afterwards last selected view is used.	
 open todo's:	calendar	it	ToDo Aperti:
 optional	calendar	it	Opzionale
 organizer	calendar	it	Organizzatore
+output unit	calendar	it	Unità di uscita
 overlap holiday	calendar	it	sovrapposizione di una festività
 owner too	calendar	it	Anche il proprietario
 participant names by type	calendar	it	Nomi dei partecipanti per tipo
@@ -463,6 +478,7 @@ re-edit event	calendar	it	Ri-modifica l'evento
 receive email updates	calendar	it	Ricevi aggiornamenti via e-mail
 receive notifications about events you created/modified/deleted	calendar	it	Ricevi notifiche per eventi che hai creato/modificato/eliminato
 receive summary of appointments	calendar	it	Ricevi il resoconto degli appuntamenti
+recordings	calendar	it	Registrazioni
 recover	calendar	it	Recupera
 recovered	calendar	it	recuperato
 recurrence	calendar	it	Ricorrenza
@@ -482,6 +498,8 @@ repetition	calendar	it	Ripetizione
 repetitiondetails (or empty)	calendar	it	Dettagli Ripetizione (o vuoto)
 replacements for inserting events into documents	calendar	it	Sostituzion per l'inserimento in documenti
 reply to meeting request	calendar	it	Risposta a richiesta di riunione
+replying "%1" is not a participant of the event! only continue if you want to add as new participant.	calendar	it	La risposta "%1" NON è un partecipante all'evento! Continuare solo se si desidera aggiungere un nuovo partecipante.
+report	calendar	it	Rapporto
 requested	calendar	it	Richiesto
 requested date %1 outside allowed range of %2 days: recurring events obmitted!	calendar	it	La data richiesta %1 è al di fuori dell'intervallo di %2 giorni: eventi ricorrenti omessi!
 requested meeting is in the past!	calendar	it	Il meeting richiesto è nel passato!
@@ -552,6 +570,7 @@ show this week	calendar	it	mostra questa settimana
 show year and age	calendar	it	Mostra anno e età
 single event	calendar	it	singolo evento
 single participant	calendar	it	Singolo partecipante
+sort by	calendar	it	Ordina per
 specify where url of the day links to	calendar	it	Specifica l'URL del collegamento del giorno
 start	calendar	it	Inizio
 start date/time	calendar	it	Data/Ora Inizio
@@ -577,11 +596,14 @@ the apple ical apps use this color to display events from this calendar.	calenda
 the document can contain placeholder like {{%1}}, to be replaced with the data.	calendar	it	Questo documento può contenere un segnaposto come {{%1}}, da rimpiazzare con i dati.
 the document can contain placeholder like {{%3}}, to be replaced with the data (%1full list of placeholder names%2).	calendar	it	Il documento può contenere variabili metasintattiche come {{%3}}, da rimpiazzare con i dati (%1elenco completo delle variabili metasintattiche%2)
 the exceptions are deleted together with the series.	calendar	it	Le eccezioni sono eliminate insieme alla serie
+the extern organizer changed the event!	calendar	it	L'organizzatore esterno ha cambiato l'evento!
 the following document-types are supported:	calendar	it	I seguenti tipi di documenti sono supportati:
 the original series will be terminated today and a new series be created.	calendar	it	La serie originale terminerà oggi e una nuova serie verrà creata
 the resource you selected is already overbooked:	calendar	it	La risorsa selezionata è già in overbooking
+the sender "%1" is not the extern organizer "%2", proceed with caution!	calendar	it	Il mittente "%1" NON è l'organizzatore esterno "%2", procedere con cautela!
+the sender "%1" is not the participant replying "%2", proceed with caution!	calendar	it	Il mittente "%1" NON è il partecipante che risponde a "%2", procedere con cautela!
 this day is shown as first day in the week or month view.	calendar	it	Questo giorno è visualizzato come primo giorno nella vista settimanale o in quella mensile.
-this defines the end of your dayview. events after this time, are shown below the dayview.	calendar	it	Questo definisce la fine della tua vista giornaliera. Eventi dopo quest'ora sono mostrati dopo la vista giornaliera.
+this defines the end of your dayview. events after this time, are shown below the dayview.	calendar	it	Questo definisce la fine della tua vista giornaliera.<br>Eventi dopo quest'ora sono mostrati dopo la vista giornaliera.
 this defines the start of your dayview. events before this time, are shown above the dayview.<br>this time is also used as a default starttime for new events.	calendar	it	Questo definisce l'inizio della tua vista giornaliera. Eventi prima di quest'ora sono visualizzati prima della vista giornaliera.<br>Quest'ora è utilizzata anche come ora d'inizio dei nuovi eventi.
 this entry is currently opened by %1!	calendar	it	La scheda è attualmente aperta da %1
 this entry is opened by user:	calendar	it	Questa scheda è stata aperta nell'intervallo di tempo preconfigurato dall'utente:
@@ -619,6 +641,7 @@ to many might exceed your execution-time-limit	calendar	it	troppi potrebbero sup
 to-firstname	calendar	it	A Nome
 to-fullname	calendar	it	A nome completo
 to-lastname	calendar	it	A Cognome
+toggle weekend	calendar	it	Cambia il fine settimana
 tomorrow	calendar	it	Domani
 translation	calendar	it	Traduzione
 tue	calendar	it	Mar

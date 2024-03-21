@@ -277,7 +277,7 @@ class importexport_schedule_ui
 		$definition_list = ((array)$definitions->get_definitions());
 
 		$id = 'importexport.'.$definition_list[0].'.'.$data['target'];
-		return $id;
+		return substr($id, 0, 64);
 	}
 
 	/**
@@ -407,7 +407,7 @@ class importexport_schedule_ui
 		$data['last_run'] = time();
 
 		// Lock job for an hour to prevent multiples overlapping
-	//	$data['lock'] = time() + 3600;
+		$data['lock'] = time() + 3600;
 		self::update_job($data, true);
 
 		// check file
@@ -528,6 +528,15 @@ class importexport_schedule_ui
 			{
 				if (($resource = @fopen( $target, $data['type'] == 'import' ? 'rb' : 'wb' )))
 				{
+					// if steam is NOT seekable (e.g. http), copy it into temp stream, which is
+					if ($data['type'] == 'import' && ($metadata=stream_get_meta_data($resource)) &&
+						!$metadata['seekable'] && ($tmp = fopen('php://temp', 'r+')))
+					{
+						stream_copy_to_stream($resource, $tmp);
+						fclose($resource);
+						fseek($tmp, 0);
+						$resource = $tmp;
+					}
 					$result = $po->$type( $resource, $definition );
 
 					fclose($resource);

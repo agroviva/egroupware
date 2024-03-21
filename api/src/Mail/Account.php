@@ -60,7 +60,7 @@ use Horde_Mail_Transport_Smtphorde;
  * @property-read string $acc_smtp_pw_enc Credentials::(CLEARTEXT|USER|SYSTEM)
  * @property-read string $acc_smtp_type smtp class to use, default Smtp
  * @property-read string $acc_imap_type imap class to use, default Imap
- * @property-read string $acc_imap_logintype how to construct login-name standard, vmailmgr, admin, uidNumber
+ * @property-read string $acc_imap_logintype how to construct login-name standard, vmailmgr, admin, uidNumber, domain/username
  * @property-read string $acc_domain domain name
  * @property-read boolean $acc_imap_administration enable administration
  * @property-read string $acc_imap_admin_username
@@ -270,7 +270,7 @@ class Account implements \ArrayAccess
 				$params += Notifications::read($params['acc_id'], $called_for ? array(0, $called_for) : $called_for);
 			}
 			if (!empty($params['acc_imap_logintype']) && empty($params['acc_imap_username']) &&
-				$GLOBALS['egw_info']['user']['account_id'] &&
+				!empty($GLOBALS['egw_info']['user']['account_id']) &&
 				(!isset($called_for) || $called_for == $GLOBALS['egw_info']['user']['account_id']))
 			{
 				// get username/password from current user, let it overwrite credentials for all/no session
@@ -291,7 +291,7 @@ class Account implements \ArrayAccess
 		unset($this->smtpServer);
 		unset($this->smtpTransport);
 
-		$this->user = $called_for ? $called_for : $GLOBALS['egw_info']['user']['account_id'];
+		$this->user = $called_for ?: $GLOBALS['egw_info']['user']['account_id'] ?? null;
 	}
 
 	public static function ssl2secure($ssl)
@@ -1073,7 +1073,7 @@ class Account implements \ArrayAccess
 	{
 		//error_log(__METHOD__."($acc_id, ".array2string($called_for).")");
 		// some caching, but only for regular usage/users
-		if (!isset($called_for))
+		if (!isset($called_for) && (!isset(self::$instances[$acc_id]) || self::$instances[$acc_id]->user == $GLOBALS['egw_info']['user']['account_id']))
 		{
 			// act as singleton: if we already have an instance, return it
 			if (isset(self::$instances[$acc_id]))
@@ -1300,7 +1300,7 @@ class Account implements \ArrayAccess
 			{
 				$old_account_ids[] = $row['account_id'];
 			}
-			if ($data['account_id'] && ($ids_to_remove = array_diff($old_account_ids, (array)$data['account_id'])))
+			if (($ids_to_remove = array_diff($old_account_ids, (array)$data['account_id'])))
 			{
 				self::$db->delete(self::VALID_TABLE, $where+array(
 					'account_id' => $ids_to_remove,
@@ -1489,9 +1489,9 @@ class Account implements \ArrayAccess
 	{
 		//error_log(__METHOD__."($only_current_user, $just_name, '$order_by', $offset, $num_rows)");
 		$where = array();
-		if ($only_current_user)
+		if ($only_current_user !== false)
 		{
-			$account_id = $only_current_user === true ? $GLOBALS['egw_info']['user']['account_id'] : $only_current_user;
+			$account_id = $only_current_user === true ? ($GLOBALS['egw_info']['user']['account_id']??null) : $only_current_user;
 			// no account_id happens eg. for notifications during login
 			if ($account_id && !is_numeric($account_id))
 			{
@@ -1774,7 +1774,7 @@ class Account implements \ArrayAccess
 	 */
 	protected static function memberships($user=null)
 	{
-		if (!$user) $user = $GLOBALS['egw_info']['user']['account_id'];
+		if (!$user) $user = $GLOBALS['egw_info']['user']['account_id'] ?? null;
 
 		$memberships = $GLOBALS['egw']->accounts->memberships($user, true);
 		$memberships[] = $user;

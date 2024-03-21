@@ -304,9 +304,9 @@ class Base
 		$check_already_included = !empty($this->timestamps);
 		foreach($this->table_def['fd'] as $name => $data)
 		{
-			if ($data['type'] == 'timestamp' && (!$check_already_included || !in_array($name,$this->timestamps)))
+			if (($data['type'] === 'timestamp' || ($data['meta']??null) === 'timestamp') && (!$check_already_included || !in_array($name,$this->timestamps)))
 			{
-				$this->timestamps[] = $name;
+				$this->timestamps[] = $this->db_cols[$name] ?? $name;
 			}
 		}
 	}
@@ -528,7 +528,7 @@ class Base
 		{
 			foreach($this->db_data_cols as $db_col => $col)
 			{
-				if ($this->data[$col] != '')
+				if (($this->data[$col] ?? null) != '')
 				{
 					$query[$db_col] = $this->data[$col];
 				}
@@ -620,7 +620,7 @@ class Base
 
 		if ((int) $this->debug >= 4) { echo "so_sql::save(".print_r($keys,true).") autoinc_id='$this->autoinc_id', data="; _debug_array($this->data); }
 
-		if ($this->autoinc_id && !$this->data[$this->db_key_cols[$this->autoinc_id]])	// insert with auto id
+		if ($this->autoinc_id && empty($this->data[$this->db_key_cols[$this->autoinc_id]]))	// insert with auto id
 		{
 			foreach($this->db_cols as $db_col => $col)
 			{
@@ -635,7 +635,7 @@ class Base
 					if ($this->table_def['fd'][$db_col]['type'] == 'varchar' && is_string($this->data[$col]) &&
 						strlen($this->data[$col]) > $this->table_def['fd'][$db_col]['precision'])
 					{
-						// truncate the field to mamimum length, if upper layers didn't care
+						// truncate the field to maximum length, if upper layers didn't care
 						$data[$db_col] = substr($this->data[$col],0,$this->table_def['fd'][$db_col]['precision']);
 					}
 					else
@@ -1257,13 +1257,12 @@ class Base
 	 */
 	public function search2criteria($_pattern,&$wildcard='',&$op='AND',$extra_col=null, $search_cols=[],$search_cfs=null)
 	{
-		$pattern = trim($_pattern);
 		// This function can get called multiple times.  Make sure it doesn't re-process.
-		if (empty($pattern) || is_array($pattern)) return $pattern;
-		if(strpos($pattern, 'CAST(COALESCE(') !== false)
+		if (empty($_pattern) || is_array($_pattern) || strpos($_pattern, 'CAST(COALESCE(') !== false)
 		{
-			return $pattern;
+			return $_pattern;
 		}
+		$pattern = trim($_pattern);
 
 		$criteria = array();
 		$filter = array();
@@ -1419,15 +1418,15 @@ class Base
 			$token = strtok($break);
 		}
 
-		if($criteria['NOT'])
+		if (!empty($criteria['NOT']))
 		{
 			$filter[] = 'NOT (' . implode(' OR ', $criteria['NOT']) . ') ';
 		}
-		if($criteria['AND'])
+		if (!empty($criteria['AND']))
 		{
 			$filter[] = implode(' AND ', $criteria['AND']) . ' ';
 		}
-		if($criteria['OR'])
+		if (!empty($criteria['OR']))
 		{
 			$filter[] = '(' . implode(' OR ', $criteria['OR']) . ') ';
 		}

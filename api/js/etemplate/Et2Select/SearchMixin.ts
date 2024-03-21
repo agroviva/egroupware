@@ -7,14 +7,16 @@
  * @author Nathan Gray
  */
 
-
-import {css, html, LitElement, render, SlotMixin} from "@lion/core";
+import {css, CSSResultGroup, html, LitElement, nothing, TemplateResult} from "lit";
 import {cleanSelectOptions, SelectOption} from "./FindSelectOptions";
 import {Validator} from "@lion/form-core";
 import {Et2Tag} from "./Tag/Et2Tag";
-import {SlMenuItem} from "@shoelace-style/shoelace";
-import {waitForEvent} from "@shoelace-style/shoelace/dist/internal/event";
 import {StaticOptions} from "./StaticOptions";
+import {dedupeMixin} from "@open-wc/dedupe-mixin";
+import {SlOption} from "@shoelace-style/shoelace";
+import {Et2Textbox} from "../Et2Textbox/Et2Textbox";
+import {until} from "lit/directives/until.js";
+import {waitForEvent} from "../Et2Widget/event";
 
 // Otherwise import gets stripped
 let keep_import : Et2Tag;
@@ -54,18 +56,24 @@ export declare class SearchMixinInterface
 	/**
 	 * Search local options
 	 */
-	localSearch(search : string, options : object) : Promise<void>
+	localSearch(search : string, options : object) : Promise<any[]>
 
 	/**
 	 * Search remote options.
 	 * If searchUrl is not set, it will return very quickly with no results
 	 */
-	remoteSearch(search : string, options : object) : Promise<void>
+	remoteSearch(search : string, options : object) : Promise<any[]>
 
 	/**
 	 * Check a [local] item to see if it matches
 	 */
 	searchMatch(search : string, options : object, item : LitElement) : boolean
+
+	/**
+	 * Additional customisation location, where we stick the search elements
+	 *
+	 * @type {TemplateResult}
+	 */
 }
 
 /**
@@ -74,9 +82,9 @@ export declare class SearchMixinInterface
  *
  * Currently I assume we're extending an Et2Select, so changes may need to be made for better abstraction
  */
-export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass : T) =>
+export const Et2WithSearchMixin = dedupeMixin(<T extends Constructor<LitElement>>(superclass : T) =>
 {
-	class Et2WidgetWithSearch extends SlotMixin(superclass)
+	class Et2WidgetWithSearch extends superclass
 	{
 		static get properties()
 		{
@@ -105,54 +113,18 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			}
 		}
 
-		static get styles()
+		static get styles() : CSSResultGroup
 		{
 			return [
 				// @ts-ignore
 				...(super.styles ? (Symbol.iterator in Object(super.styles) ? super.styles : [super.styles]) : []),
 				css`
-				/* Move the widget border 
-				.form-control-input {
-					border: solid var(--sl-input-border-width) var(--sl-input-border-color);
-					border-radius: var(--sl-input-border-radius-medium);
-				}
-				.form-control-input:hover {
-					background-color: var(--sl-input-background-color-hover);
-					border-color: var(--sl-input-border-color-hover);
-					color: var(--sl-input-color-hover);
-			  	}
-				.select--standard .select__control {
-					border-style: none;
-				}
-				/* Move focus highlight */
-				.form-control-input:focus-within {
-					box-shadow: var(--sl-focus-ring);
-				}
-				.select--standard.select--focused:not(.select--disabled) .select__control {
-					box-shadow: initial;
-				}
-				/* Show / hide SlSelect icons - dropdown arrow, etc but not loading spinner */
-				:host([allowFreeEntries]) ::slotted(sl-icon[slot="suffix"]) {
-					display: none;
-				}
-				/* Make search textbox take full width */
-				::slotted(.search_input), ::slotted(.search_input) input, .search_input, .search_input input {
-					width: 100%;
-				}
-				.search_input input {
-					flex: 1 1 auto;
-					width: 100%;
-				}
+
 				/* Full width search textbox covers loading spinner, lift it up */
 				::slotted(sl-spinner) {
 					z-index: 2;
 				}
-				/* Don't show the current value while searching for single, we want the space
-					This lets the current value shrink to nothing so the input can expand
-				 */
-				.select__label {
-					flex: 1 15 auto;
-				}
+
 				/* Show edit textbox only when editing */
 				.search_input #edit {
 					display: none;
@@ -163,36 +135,55 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				.search_input.editing #edit {
 					display: initial;
 				}
-				:host([search]:not([multiple])) .select--open .select__prefix {
+
+
+				  :host([search]) sl-select[open]::part(prefix), :host([allowfreeentries]) sl-select[open]::part(prefix) {
+					order: 9;
 					flex: 2 1 auto;
+					flex-wrap: wrap;
 					width: 100%;
 				}
-				:host([search]:not([multiple])) .select--open .select__label {
-					margin: 0px;
-				}
-				:host([allowfreeentries]:not([multiple])) .select--standard.select--open:not(.select--disabled) .select__control .select__prefix {
-					flex: 1 1 auto;
-				}
-				:host([allowfreeentries]:not([multiple])) .select--standard.select--open:not(.select--disabled) .select__control .select__label {
+
+				  :host([search]) sl-select[open]::part(display-input), :host([allowfreeentries]) sl-select[open]::part(display-input) {
 					display: none;
 				}
+
+				  :host([search]) sl-select[open]::part(expand-icon) {
+					display: none;
+				  }
+
+				  sl-select[open][multiple]::part(tags) {
+					flex-basis: 100%;
+				  }
+
+				  sl-select[open][multiple]::part(combobox) {
+					flex-flow: wrap;
+				  }
+
 
 				  /* Search textbox general styling, starts hidden */
 
-				  .select__prefix ::slotted(.search_input), .search_input {
+				  .search_input {
 					display: none;
+					/* See also etemplate2.css, searchbox border turned off in there */
+					border: none;
 					flex: 1 1 auto;
+					order: 2;
 					margin-left: 0px;
-					width: 100%;
 					height: var(--sl-input-height-medium);
-					position: absolute;
+					width: 100%;
 					background-color: white;
 					z-index: var(--sl-z-index-dropdown);
 				  }
 
+				  :host([search]) et2-textbox::part(base) {
+					border: none;
+					box-shadow: none;
+				  }
+
 				  /* Search UI active - show textbox & stuff */
 
-				  ::slotted(.search_input.active), .search_input.active,
+				  .search_input.active,
 				  .search_input.editing {
 					display: flex;
 				  }
@@ -204,7 +195,8 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				  }
 				
 				/* Hide options that do not match current search text */
-				::slotted(.no-match) {
+
+				  :host([search]) sl-option.no-match {
 					display: none;
 				}
 				/* Different cursor for editable tags */
@@ -220,10 +212,6 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				/* disable focus border */
 				:host([readonly]) .form-control-input:focus-within {
 					box-shadow: none;
-				}
-				/* no menu */
-				:host([readonly]) sl-menu {
-					display: none;
 				}
 				/* normal cursor */
 				:host([readonly]) .select__control {
@@ -254,15 +242,15 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		 */
 		protected static MIN_CHARS = 2;
 
-		/**
-		 * Limit server searches to 100 results, matches Link::DEFAULT_NUM_ROWS
-		 * @type {number}
-		 */
-		static RESULT_LIMIT : number = 100;
-
-
 		// Hold the original option data from earlier search results, since we discard on subsequent search
 		private _selected_remote = <SelectOption[]>[];
+
+		// Hold current search results, selected or otherwise
+		private _remote_options = <SelectOption[]>[];
+
+		private _total_result_count = 0;
+
+		protected _searchPromise = null;
 
 		/**
 		 * These characters will end a free tag
@@ -283,7 +271,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 
 			// Hiding the selected options from the dropdown means we can't un-select the tags
 			// hidden by the max limit.  Prefer no limit.
-			this.maxTagsVisible = -1;
+			this.maxOptionsVisible = -1;
 
 			this.validators = [];
 			/**
@@ -297,16 +285,19 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			 */
 			this.defaultValidators = [];
 
-			this.handleMenuSelect = this.handleMenuSelect.bind(this);
+			this.handleOptionClick = this.handleOptionClick.bind(this);
 			this._handleChange = this._handleChange.bind(this);
 			this.handleTagEdit = this.handleTagEdit.bind(this);
 			this._handleAfterShow = this._handleAfterShow.bind(this);
+			this._handleMenuHide = this._handleMenuHide.bind(this);
 			this._handleSearchBlur = this._handleSearchBlur.bind(this);
 			this._handleClear = this._handleClear.bind(this);
 			this._handleDoubleClick = this._handleDoubleClick.bind(this);
 			this._handleSearchAbort = this._handleSearchAbort.bind(this);
+			this._handleSearchClear = this._handleSearchClear.bind(this);
 			this._handleSearchChange = this._handleSearchChange.bind(this);
 			this._handleSearchKeyDown = this._handleSearchKeyDown.bind(this);
+			this._handleSearchMouseDown = this._handleSearchMouseDown.bind(this);
 			this._handleEditKeyDown = this._handleEditKeyDown.bind(this);
 			this._handlePaste = this._handlePaste.bind(this);
 		}
@@ -324,7 +315,6 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				return;
 			}
 
-			this._addNodes();
 			this._bindListeners();
 		}
 
@@ -332,6 +322,16 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		{
 			super.disconnectedCallback();
 			this._unbindListeners();
+		}
+
+		async getUpdateComplete()
+		{
+			const result = super.getUpdateComplete();
+			if(this._searchInputNode)
+			{
+				await this._searchInputNode.updateComplete;
+			}
+			return result;
 		}
 
 		willUpdate(changedProperties)
@@ -363,7 +363,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				}
 				else if(this.allowFreeEntries && this.multiple)
 				{
-					this.value.forEach((e) =>
+					this.getValueAsArray().forEach((e) =>
 					{
 						if(!this.select_options.find(o => o.value == e))
 						{
@@ -376,7 +376,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 					// Check to see if value is for an option we do not have
 					for(const newValueElement of this.getValueAsArray())
 					{
-						if(this.select_options.some(o => o.value == newValueElement))
+						if(this.optionSearch(newValueElement))
 						{
 							continue;
 						}
@@ -394,6 +394,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			// One of the key properties has changed, need to add the needed nodes
 			if(changedProperties.has("search") || changedProperties.has("editModeEnabled") || changedProperties.has("allowFreeEntries"))
 			{
+				this._unbindListeners();
 				// Missing any of the required attributes?  Now we need to take it out.
 				if(!this.searchEnabled && !this.editModeEnabled && !this.allowFreeEntries || this.readonly)
 				{
@@ -401,8 +402,8 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 					return;
 				}
 
-				// Normally this should be handled in render(), but we have to add our nodes in
-				this._addNodes();
+				// Listeners may have been skipped from connectedCallback()
+				this._bindListeners();
 			}
 			// Update any tags if edit mode changes
 			if(changedProperties.has("editModeEnabled") || changedProperties.has("readonly"))
@@ -413,57 +414,46 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 					tag.editable = this.editModeEnabled && !this.readonly;
 					tag.removable = !this.readonly;
 				});
+
+				if(this.readonly)
+				{
+					this._unbindListeners();
+				}
 			}
 		}
 
-		/**
-		 * Add the nodes we need to search - adjust parent shadowDOM
-		 *
-		 * @protected
-		 */
-		protected _addNodes()
+		protected _extraTemplate() : TemplateResult | typeof nothing
 		{
-			if(this._activeControls)
+			if(!this.searchEnabled && !this.editModeEnabled && !this.allowFreeEntries || this.readonly)
 			{
-				// Already there
-				return;
+				return nothing;
 			}
 
-			const div = document.createElement("div");
-			div.classList.add("search_input");
-			render(this._searchInputTemplate(), div);
-			if(!super.multiple)
-			{
-				div.slot = "prefix";
-				this.appendChild(div);
-				return;
-			}
+			return html`
+                ${this._searchInputTemplate()}
+                ${until(this._moreResultsTemplate(), nothing)}
+                ${this._noResultsTemplate()}
+			`;
+		}
 
-			super.updateComplete.then(() =>
+		protected async _moreResultsTemplate()
+		{
+			if(this._total_result_count <= 0 || !this.select || !this._searchPromise)
 			{
-				let control = this.shadowRoot.querySelector(".form-control-input");
-				control.append(div);
+				return nothing;
+			}
+			return this._searchPromise.then(() =>
+			{
+				const moreCount = this._total_result_count - this.select?.querySelectorAll("sl-option.match").length;
+				const more = this.egw().lang("%1 more...", moreCount);
+
+				return html`<span class="more">${more}</span>`;
 			});
-		}
-
-		/**
-		 * Customise how tags are rendered.
-		 * Override to add edit
-		 *
-		 * @param item
-		 * @protected
-		 */
-		protected _createTagNode(item)
-		{
-			let tag = <Et2Tag>document.createElement(this.tagTag);
-			tag.editable = this.editModeEnabled && !this.readonly;
-
-			return tag;
 		}
 
 		protected _searchInputTemplate()
 		{
-			let edit = null;
+			let edit = nothing;
 			if(this.editModeEnabled)
 			{
 				edit = html`<input id="edit" type="text" part="input" autocomplete="off" style="width:100%"
@@ -472,23 +462,52 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
                                    @blur=${this.stopEdit.bind(this)}
                 />`;
 			}
-			// I can't figure out how to get this full width via CSS
 			return html`
-                <et2-textbox id="search" type="text" part="input" clearable
+                <div class="search_input" slot="prefix">
+                <et2-textbox id="search" type="text" part="input"
+                             exportparts="base:search__base"
+                             clearable
                              autocomplete="off"
+                             tabindex="-1"
                              placeholder="${this.egw().lang("search")}"
-                               style="width:100%"
+                             style="flex: 1 1 auto;"
                                @keydown=${this._handleSearchKeyDown}
                                @blur=${this._handleSearchBlur}
+                             @sl-clear=${this._handleSearchClear}
+                             @sl-change=${this._handleSearchChange}
                 ></et2-textbox>
                 ${edit}
+                </div>
 			`;
 		}
 
 		protected _noResultsTemplate()
 		{
-			return html`
+			if(this._total_result_count !== 0 || !this._searchInputNode?.value)
+			{
+				return nothing;
+			}
+
+			const noSuggestions = html`
                 <div class="no-results">${this.egw().lang("no suggestions")}</div>`;
+
+			if(!this._searchPromise)
+			{
+				return noSuggestions;
+			}
+
+			let noResults = this._searchPromise.then(() =>
+			{
+				return this._total_result_count == 0 ?
+					   noSuggestions :
+					   nothing;
+			});
+
+			return html`${until(
+				noResults,
+				html`
+                    <sl-spinner></sl-spinner>`
+			)}`;
 		}
 
 		/**
@@ -501,7 +520,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			return !this.readonly && (this.search || this.searchUrl.length > 0);
 		}
 
-		protected get _searchInputNode() : HTMLInputElement
+		protected get _searchInputNode() : Et2Textbox
 		{
 			return this._activeControls?.querySelector("#search");
 		}
@@ -517,6 +536,10 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				this.querySelector(".search_input");
 		}
 
+		protected get optionTag()
+		{
+			return 'sl-option';
+		}
 
 		/**
 		 * Only local options, excludes server options
@@ -525,7 +548,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		 */
 		protected get localItems() : NodeList
 		{
-			return this.querySelectorAll(this.optionTag + ":not(.remote)");
+			return this.select.querySelectorAll(this.optionTag + ":not(.remote)");
 		}
 
 		/**
@@ -535,7 +558,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		 */
 		protected get remoteItems() : NodeList
 		{
-			return this.querySelectorAll(this.optionTag + ".remote");
+			return this.select?.querySelectorAll(this.optionTag + ".remote") ?? [];
 		}
 
 		/**
@@ -545,7 +568,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		 */
 		protected get freeEntries() : NodeList
 		{
-			return this.querySelectorAll(this.optionTag + ".freeEntry");
+			return this.select?.querySelectorAll(this.optionTag + ".freeEntry") ?? [];
 		}
 
 		get select_options() : SelectOption[]
@@ -558,11 +581,14 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			// Any kept remote options
 			options = options.concat(this._selected_remote ?? []);
 
+			// Current search results
+			options = options.concat(this._remote_options ?? []);
+
 			if(this.allowFreeEntries)
 			{
-				this.freeEntries.forEach((item : SlMenuItem) =>
+				this.freeEntries.forEach((item : SlOption) =>
 				{
-					if(!options.some(i => i.value == item.value))
+					if(!options.some(i => i.value == item.value.replaceAll("___", " ")))
 					{
 						options.push({value: item.value, label: item.textContent, class: item.classList.toString()});
 					}
@@ -600,11 +626,11 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			{
 				return;
 			}
-
+			
 			// If widget is currently open, we may need to re-calculate search / dropdown positioning
 			if(this.isOpen)
 			{
-				this.handleMenuShow();
+				this._handleMenuShow();
 			}
 		}
 
@@ -623,11 +649,13 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			// Given a value we need to search for - this will add in all matches, including the one needed
 			this.remoteSearch(newValueElement, this.searchOptions).then((result : SelectOption[]) =>
 			{
-				const option = <SelectOption>result.find(o => o.value == newValueElement);
-				if(option)
+				// Re-set / update value since SlSelect probably removed it by now due to missing option
+				if(typeof this.select != "undefined")
 				{
-					this._selected_remote.push(option);
+					this.select.value = this.shoelaceValue ?? this.value;
+					this.select.requestUpdate("value");
 				}
+				this.requestUpdate("value");
 			});
 		}
 
@@ -641,7 +669,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			const valueArray = Array.isArray(this.value) ? this.value : (!this.value ? [] : this.value.toString().split(','));
 
 			// Check any already found options
-			if(Object.values(this.menuItems).filter((option) => valueArray.find(val => val == option.value)).length === 0)
+			if(Object.values(this.getAllOptions()).filter((option) => valueArray.find(val => val == option.value)).length === 0)
 			{
 				return false;
 			}
@@ -653,7 +681,9 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		protected _bindListeners()
 		{
 			this.addEventListener("sl-clear", this._handleClear);
+			this.addEventListener("sl-show", this._handleMenuShow);
 			this.addEventListener("sl-after-show", this._handleAfterShow);
+			this.addEventListener("sl-hide", this._handleMenuHide);
 
 			// Need our own change to catch the change event from search input
 			this.addEventListener("change", this._handleChange);
@@ -673,14 +703,16 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				this._searchInputNode?.removeEventListener("change", this._searchInputNode.handleChange);
 				this._searchInputNode?.addEventListener("change", this._handleSearchChange);
 
-				this.dropdown.querySelector('.select__label').addEventListener("change", this.handleTagEdit);
+				//		this.dropdown.querySelector('.select__label').addEventListener("change", this.handleTagEdit);
 			});
 		}
 
 		protected _unbindListeners()
 		{
 			this.removeEventListener("sl-select", this._handleSelect);
+			this.removeEventListener("sl-show", this._handleMenuShow);
 			this.removeEventListener("sl-after-show", this._handleAfterShow);
+			this.removeEventListener("sl-hide", this._handleMenuHide);
 			this.removeEventListener("sl-clear", this._handleClear)
 			this.removeEventListener("change", this._handleChange);
 			this.removeEventListener("paste", this._handlePaste);
@@ -688,25 +720,23 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			this._searchInputNode?.removeEventListener("change", this._handleSearchChange);
 		}
 
-		handleMenuShow()
+		_handleMenuShow()
 		{
 			if(this.readonly)
 			{
 				return;
 			}
+			this.setAttribute("open", "");
+
 			// Move search (& menu) if there's no value
 			this._activeControls?.classList.toggle("novalue", this.multiple && this.value == '' || !this.multiple);
 
 			// Reset for parent calculations, will be adjusted after if needed
-			this.dropdown.setAttribute("distance", 0);
-
-			super.handleMenuShow();
+			//this.dropdown.setAttribute("distance", 0);
 
 			if(this.searchEnabled || this.allowFreeEntries)
 			{
 				this._activeControls?.classList.add("active");
-				this._searchInputNode.focus();
-				this._searchInputNode.select();
 				// Hide edit explicitly since it's so hard via CSS
 				if(this._editInputNode)
 				{
@@ -724,49 +754,39 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		}
 
 		/**
-		 * Reposition the dropdown to allow space for current value and search.  If the dropdown was positioned above
-		 * instead of below, we don't need the extra space - remove it.
+		 * Focus the search input after showing the dropdown so user can just type.
+		 *
+		 * Timeout is needed for some systems to properly focus
 		 */
 		_handleAfterShow()
 		{
-			// Need to give positioner a chance to position.
-			// If we call it right away, it has not updated.
-			// I haven't found an event or Promise to hook on to
-			window.setTimeout(() =>
+			if(this.searchEnabled || this.allowFreeEntries)
 			{
-				if(this.dropdown?.getAttribute("distance") && this.dropdown?.popup?.dataset.currentPlacement == "top")
+				window.setTimeout(() =>
 				{
-					this.dropdown.setAttribute("distance", 0);
-					this.dropdown.reposition();
-				}
-				else
-				{
-					this.dropdown?.setAttribute("distance",
-						!this._activeControls || this._activeControls?.classList.contains("novalue") ?
-						parseInt(getComputedStyle(this.control).getPropertyValue("border-width")) :
-							// Make room for search below
-						parseInt(getComputedStyle(this._activeControls).getPropertyValue("--sl-input-height-medium"))
-					);
-				}
-			}, 100);
+					this._searchInputNode.focus();
+					this._searchInputNode.select();
+				}, 100);
+			}
 		}
 
 		focus()
 		{
-			this.dropdown?.show().then(() =>
+			this.show().then(() =>
 			{
-				this._searchInputNode.focus();
+				this._searchInputNode?.focus();
 			});
 		}
 
-		handleMenuHide()
+		_handleMenuHide()
 		{
 			if(this.readonly)
 			{
 				return;
 			}
-			clearTimeout(this._searchTimeout);
-			super.handleMenuHide();
+			this.removeAttribute("open");
+
+			waitForEvent(this, "sl-after-hide").then(() => this.clearSearch());
 
 			// Reset display
 			if(this._searchInputNode)
@@ -778,11 +798,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				this._editInputNode.style.display = "";
 			}
 
-			if(this.searchEnabled || this.allowFreeEntries)
-			{
-				this._activeControls?.classList.remove("active");
-				this.shadowRoot.querySelector('.select__label').style.display = "";
-			}
+			this._activeControls?.classList.remove("active");
 		}
 
 		_triggerChange(event)
@@ -794,6 +810,10 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				event.preventDefault();
 				return false;
 			}
+
+			// Find and keep any selected remote entries
+			// Doing it here catches keypress changes too
+			this._keepSelectedRemote();
 			return true;
 		}
 
@@ -820,24 +840,53 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			// Find the tag
 			const path = event.composedPath();
 			const tag = <Et2Tag>path.find((el) => el instanceof Et2Tag);
-			this.dropdown.hide();
+			this.hide();
 			this.updateComplete.then(() =>
 			{
 				tag.startEdit(event);
 			});
 		}
 
+		_keepSelectedRemote()
+		{
+			this.select.querySelectorAll("[aria-selected=true].remote").forEach((node) =>
+			{
+				const value = node.value.replaceAll("___", " ");
+				if(!node.selected || this._selected_remote.some(o => o.value == value))
+				{
+					return;
+				}
+				const filter = (options) =>
+				{
+					for(let i = options.length - 1; i >= 0; i--)
+					{
+						if(Array.isArray(options[i].value))
+						{
+							filter(options[i].value);
+						}
+						else if(options[i].value == value)
+						{
+							this._selected_remote.push(options[i]);
+							options.splice(i, 1);
+						}
+					}
+				}
+				filter(this._remote_options)
+			});
+		}
 		/**
 		 * An option was selected
 		 */
-		handleMenuSelect(event)
+		handleOptionClick(event)
 		{
-			// Need to keep the remote option - only if selected
-			if(event.detail.item.classList.contains("remote") && !this.select_options.find(o => o.value == event.detail.item.value))
+			// Only interested in option clicks, but handler is bound higher
+			if(event.target.tagName !== "SL-OPTION")
 			{
-				this._selected_remote.push({...event.detail.item.option});
+				return;
 			}
-			super.handleMenuSelect(event);
+
+			if(typeof super.handleOptionClick == "function")
+			super.handleOptionClick(event);
 
 			this.updateComplete.then(() =>
 			{
@@ -846,25 +895,6 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				{
 					this._searchInputNode.focus();
 					this._searchInputNode.select();
-
-					// If we were overlapping, reset
-					if(this._activeControls.classList.contains("novalue"))
-					{
-						this.handleMenuShow();
-						this._handleAfterShow();
-					}
-
-					// Scroll the new tag into view
-					if(event.detail && event.detail.item)
-					{
-						// Causes sidemenu (calendar) to scroll to top & get stuck
-						/*
-						this.updateComplete.then(() =>
-						{
-							this.shadowRoot.querySelector("et2-tag[value='" + event.detail.item.value.replace(/'/g, "\\\'") + "']")?.scrollIntoView({block: "nearest"});
-						});
-						 */
-					}
 				}
 				else if(!this.multiple && this.searchEnabled)
 				{
@@ -881,17 +911,11 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		_handleClear(e)
 		{
 			// Only keep remote options that are still used
-			this._selected_remote = this._selected_remote.filter((option) => this.getValueAsArray().indexOf(option.value) !== -1);
+			this._selected_remote = this._selected_remote.filter((option) => this.value.indexOf(option.value) !== -1);
 
 			if(!this.multiple && this.searchEnabled)
 			{
 				this._handleSearchAbort(e);
-
-				// Restore label styling
-				this.shadowRoot.querySelector("[part='display-label']").style.display = "";
-
-				// Start searching again
-				this.updateComplete.then(() => this.handleMenuShow())
 			}
 		}
 
@@ -906,17 +930,6 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		async _handleSearchBlur(event : FocusEvent)
 		{
 			clearTimeout(this._searchTimeout);
-			if(event.relatedTarget && event.relatedTarget instanceof SlMenuItem)
-			{
-				return;
-			}
-
-			// Try any value they had in progress
-			if(this._searchInputNode.value && this.allowFreeEntries)
-			{
-				this.createFreeEntry(this._searchInputNode.value);
-			}
-			this.clearSearch();
 		}
 
 		/**
@@ -928,15 +941,27 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		{
 			clearTimeout(this._searchTimeout);
 			this._activeControls?.classList.add("active");
-			this.dropdown.show();
 
 			// Pass off some keys to select
 			if(['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key))
 			{
 
 				// Strip out hidden non-matching selected & disabled items so key navigation works
-				this.menuItems = this.menuItems.filter(i => !i.disabled);
-				return super.handleKeyDown(event);
+				// TODO
+				return;
+			}
+			else if(event.key == "Tab" && !this._searchInputNode.value)
+			{
+				// Mess with tabindexes to allow focus to easily go to next control
+				const input = this.select.shadowRoot.querySelector('[tabindex="0"]');
+				input.setAttribute("tabindex", "-1");
+				this.updateComplete.then(() =>
+				{
+					// Set it back so we can get focus again later
+					input.setAttribute("tabindex", "0");
+				})
+				// Allow to propagate
+				return;
 			}
 			event.stopPropagation();
 
@@ -946,12 +971,12 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			{
 				event.preventDefault();
 				this._searchInputNode.value = "";
-				this.dropdown.hide().then(async() =>
+				this.updateComplete.then(async() =>
 				{
 					// update sizing / position before getting ready for another one
 					if(this.multiple)
 					{
-						await this.dropdown.show();
+						//	await this.show();
 						this._searchInputNode.focus();
 					}
 				});
@@ -965,7 +990,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			else if(event.key == "Escape")
 			{
 				this._handleSearchAbort(event);
-				this.dropdown.hide();
+				this.hide();
 				return;
 			}
 
@@ -975,6 +1000,17 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			{
 				this._searchTimeout = window.setTimeout(() => {this.startSearch()}, Et2WidgetWithSearch.SEARCH_TIMEOUT);
 			}
+		}
+
+		/**
+		 * Combobox listens for mousedown, which interferes with search clear button.
+		 * Here we block it from bubbling
+		 * @param {MouseEvent} event
+		 * @protected
+		 */
+		protected _handleSearchMouseDown(event : MouseEvent)
+		{
+			event.stopPropagation();
 		}
 
 		protected _handleEditKeyDown(event : KeyboardEvent)
@@ -1035,53 +1071,40 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			// Stop timeout timer
 			clearTimeout(this._searchTimeout);
 
-			// Show a spinner
-			let spinner = document.createElement("sl-spinner");
-			spinner.slot = "suffix";
-			this.appendChild(spinner);
+			this.setAttribute("searching", "");
 
 			// Hide clear button
-			let clear_button = <HTMLElement>this._searchInputNode.shadowRoot.querySelector(".input__clear")
+			let clear_button = <HTMLElement>this._searchInputNode?.shadowRoot?.querySelector(".input__clear");
 			if(clear_button)
 			{
 				clear_button.style.display = "none";
 			}
 
 			// Clear previous results
+			this._total_result_count = 0;
 			this._clearResults();
-			await this.updateComplete;
 
 			// Start the searches
-			return Promise.all([
+			this._searchPromise = Promise.all([
 				this.localSearch(this._searchInputNode.value, this.searchOptions),
 				this.remoteSearch(this._searchInputNode.value, this.searchOptions)
-			]).then(() =>
+			]).then(async() =>
 			{
-				// Show no results indicator
-				if(this.menuItems.filter(e => !e.classList.contains("no-match")).length == 0)
-				{
-					let target = this._optionTargetNode || this;
-					let temp = document.createElement("div");
-					render(this._noResultsTemplate(), temp);
-					target.append(temp.children[0]);
-				}
-
-				// Remove spinner
-				spinner.remove();
+				this.removeAttribute("searching");
 
 				// Restore clear button
 				if(clear_button)
 				{
 					clear_button.style.display = "";
 				}
-			}).then(() =>
-			{
-				// Not sure why this stays hidden if there's no results, but it sticks and hides all results afterward
-				this.dropdown.shadowRoot.querySelector(".dropdown__panel").removeAttribute("hidden");
+				await this.updateComplete;
 
-				// Call our resize stuff explicitly
-				this._handleAfterShow();
+				this._searchPromise = null;
 			});
+
+			this.requestUpdate();
+
+			return this._searchPromise;
 		}
 
 		/**
@@ -1107,35 +1130,33 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		{
 			let target = this._optionTargetNode || this;
 
-			// Remove "no suggestions"
-			target.querySelector(".no-results")?.remove();
+			this._keepSelectedRemote();
 
-			// Remove any previously selected remote options that aren't used anymore
-			this._selected_remote = this._selected_remote.filter((option) =>
+			this._remote_options = [];
+
+			this._total_result_count = 0;
+
+			// Not searching anymore, clear flag
+			const clear_flag = (option) =>
 			{
-				return this.multiple ? this.value.indexOf(option.value) != -1 : this.value == option.value;
-			});
-			// Remove remote options that aren't used
-			let keepers = this._selected_remote.reduce((prev, current) =>
-			{
-				return prev + ":not([value='" + ('' + current.value).replace(/'/g, "\\\'") + "'])";
-			}, "");
-			target.querySelectorAll(".remote" + keepers).forEach(o => o.remove());
-			target.childNodes.forEach((n) =>
-			{
-				if(n.nodeType == Node.COMMENT_NODE)
+				if(Array.isArray(option.value))
 				{
-					n.remove();
+					option.value.map(clear_flag)
 				}
-			})
+				else
+				{
+					option.isMatch = null
+				}
+			}
+			this.select_options.map(clear_flag);
+			this.requestUpdate("select_options");
 
-			// Reset remaining options.  It might be faster to re-create instead.
-			this._menuItems.forEach((item) =>
+			// Rendering options using repeat() means we need to explicitly update the nodes since they
+			// don't always get re-rendered
+			for(const option of this.select.querySelectorAll(".no-match"))
 			{
-				item.disabled = item.option?.disabled || false;
-				item.classList.remove("match");
-				item.classList.remove("no-match");
-			});
+				option.classList.remove("no-match", "match");
+			}
 		}
 
 		/**
@@ -1148,14 +1169,11 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		{
 			return new Promise((resolve) =>
 			{
-				this.localItems.forEach((item) =>
+				this.select_options.forEach((option) =>
 				{
-					let match = this.searchMatch(search, item);
-					item.classList.toggle("match", match);
-					// set disabled so arrow keys step over.  Might be a better way to handle that
-					item.disabled = !match;
-					item.classList.toggle("no-match", !match);
+					option.isMatch = this.searchMatch(search, option);
 				})
+				this.requestUpdate("select_options");
 				resolve();
 			});
 		}
@@ -1198,6 +1216,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			const controller = new AbortController();
 			const signal = controller.signal;
 			let response_ok = false;
+			let resultLimit = Math.max(parseInt(this.egw().preference('maxmatchs', 'common')), 100);
 			return StaticOptions.cached_from_file(this, this.searchUrl)
 				.then(options =>
 				{
@@ -1208,13 +1227,13 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 						return option.label.toLowerCase().includes(lower_search) || option.value.includes(search)
 					});
 					// Limit results
-					const totalCount = filtered.length;
-					if(filtered.length > Et2WidgetWithSearch.RESULT_LIMIT)
+					this._total_result_count += filtered.length;
+					if(filtered.length > resultLimit)
 					{
-						filtered.splice(Et2WidgetWithSearch.RESULT_LIMIT);
+						filtered.splice(resultLimit);
 					}
 					// Add the matches
-					this.processRemoteResults(filtered, totalCount);
+					this._total_result_count -= this.processRemoteResults(filtered);
 					return filtered;
 				})
 				.catch((_err) =>
@@ -1244,91 +1263,95 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		{
 			// Include a limit, even if options don't, to avoid massive lists breaking the UI
 			let sendOptions = {
-				num_rows: Et2WidgetWithSearch.RESULT_LIMIT,
+				num_rows: parseInt(this.egw().preference('maxmatchs', 'common')) ?? 100,
 				...options
 			}
 			return this.egw().request(this.egw().link(this.egw().ajaxUrl(this.egw().decodePath(this.searchUrl)),
 				{query: search, ...sendOptions}), [search, sendOptions]).then((results) =>
 			{
-				// If results have a total included, pull it out.
-				// It will cause errors if left in the results
-				let total = null;
-				if(typeof results.total !== "undefined")
-				{
-					total = results.total;
-					delete results.total;
-				}
-				let entries = cleanSelectOptions(results);
-				this.processRemoteResults(entries, total);
-				return entries;
+				return this._processResultCount(results);
 			});
 		}
 
 		/**
-		 * Add in remote results
+		 * Update total result count, checking results for a total attribute, then further processing the results
+		 * into select options
+		 *
 		 * @param results
-		 * @param totalResults If there are more results than were returned, total number of matches
+		 * @returns {SelectOption[]}
 		 * @protected
 		 */
-		protected processRemoteResults(entries, totalResults = 0)
+		protected _processResultCount(results)
+		{
+			// If results have a total included, pull it out.
+			// It will cause errors if left in the results
+			if(typeof results.total !== "undefined")
+			{
+				this._total_result_count += results.total;
+				delete results.total;
+				// Make it an array, since it was probably an object, and cleanSelectOptions() treats objects differently
+				results = Object.values(results);
+			}
+			else
+			{
+				this._total_result_count += results.length;
+			}
+			let entries = cleanSelectOptions(results);
+			let entryCount = entries.length;
+			this._total_result_count -= this.processRemoteResults(entries);
+
+			return entries;
+		}
+
+		/**
+		 * Add in remote results
+		 *
+		 * Any results that already exist will be removed to avoid duplicates
+		 *
+		 * @param results
+		 * @return Duplicate count
+		 * @protected
+		 */
+		protected processRemoteResults(entries)
 		{
 			if(!entries?.length)
 			{
-				return Promise.resolve();
+				return 0;
 			}
-			// Add a "remote" class so we can tell these apart from any local results
-			entries.forEach((entry) => entry.class = (entry.class || "") + " remote");
+			let duplicateCount = 0;
 
-			let target = this._optionTargetNode || this;
-			if(target)
+			const process = (entries) =>
 			{
-				// Add in remote options, avoiding duplicates
-				this.select_options.filter(function(item)
+				// Add a "remote" class so we can tell these apart from any local results
+				for(let i = entries.length - 1; i >= 0; i--)
 				{
-					let i = entries.findIndex(x => (x.value == item.value));
-					if(i <= -1)
+					const entry = entries[i];
+					entry.class = (entry.class || "") + " remote";
+
+					// Handle option groups
+					if(Array.isArray(entry.value))
 					{
-						entries.push(item);
+						process(entry.value);
+						continue;
 					}
-					return null;
-				});
 
-				let options = html`${entries.map(this._optionTemplate.bind(this))}`;
+					// Server says it's a match
+					entry.isMatch = true;
 
-				/**
-				 * Add in new options.
-				 * Rendering directly into target will remove existing options, which we don't need to do
-				 */
-
-				let temp_target = document.createElement("div");
-				let resultCount = entries.length;
-
-				render(options, temp_target);
-				return Promise.all(([...temp_target.querySelectorAll(":scope > *")].map(item => item.render)))
-					.then(() =>
+					// Avoid duplicates with existing options
+					if(this.select_options.some(o => o.value == entry.value))
 					{
-						temp_target.querySelectorAll(":scope > *").forEach((item) =>
-						{
-							// Avoid duplicate error
-							if(!target.querySelector("[value='" + ('' + item.value).replace(/'/g, "\\\'") + "']"))
-							{
-								target.appendChild(item);
-							}
-						})
-						this.handleMenuSlotChange();
-					})
-					.then(() =>
-					{
-						if(totalResults && totalResults > resultCount)
-						{
-							// More results available that were not sent
-							let count = document.createElement("span")
-							count.classList.add("remote");
-							count.textContent = this.egw().lang("%1 more...", totalResults - resultCount);
-							target.appendChild(count);
-						}
-					});
+						duplicateCount++
+						entries.splice(i, 1);
+					}
+				}
 			}
+			process(entries);
+
+			this._remote_options = entries;
+			this.requestUpdate("select_options");
+
+			return duplicateCount;
 		}
 
 		/**
@@ -1339,21 +1362,21 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 		 * @returns {boolean}
 		 * @protected
 		 */
-		protected searchMatch(search, item) : boolean
+		protected searchMatch(search : string, option : SelectOption) : boolean
 		{
-			if(!item || !item.value)
+			if(!option || !option.value)
 			{
 				return false;
 			}
-			if(item.textContent?.toLowerCase().includes(search.toLowerCase()))
+			if(option.label?.toLowerCase().includes(search.toLowerCase()))
 			{
 				return true;
 			}
-			if(typeof item.value == "string")
+			if(typeof option.value == "string")
 			{
-				return item.value.includes(search.toLowerCase());
+				return option.value.includes(search.toLowerCase());
 			}
-			return item.value == search;
+			return option.value == search;
 		}
 
 		/**
@@ -1368,26 +1391,29 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				return false;
 			}
 			// Make sure not to double-add
-			if(!this.querySelector("[value='" + text.replace(/'/g, "\\\'") + "']") && !this.__select_options.find(o => o.value == text))
+			if(!this.querySelector("[value='" + text.replace(/'/g, "\\\'") + "']") && !this.select_options.find(o => o.value == text))
 			{
 				this.__select_options.push(<SelectOption>{
 					value: text.trim(),
 					label: text.trim(),
-					class: "freeEntry"
+					class: "freeEntry",
+					isMatch: false
 				});
 				this.requestUpdate('select_options');
 			}
 
-			// Make sure not to double-add
-			if(this.multiple && this.value.indexOf(text) == -1)
+			// Make sure not to double-add, but wait until the option is there
+			if(this.multiple && this.getValueAsArray().indexOf(text) == -1)
 			{
-				this.value.push(text);
+				let value = this.getValueAsArray();
+				value.push(text);
+				this.value = value;
 			}
 			else if(!this.multiple && this.value !== text)
 			{
 				this.value = text;
 			}
-			this.requestUpdate("value");
+			this.dispatchEvent(new Event("change", {bubbles: true}));
 
 			// If we were overlapping edit inputbox with the value display, reset
 			if(!this.readonly && this._activeControls?.classList.contains("novalue"))
@@ -1441,7 +1467,6 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 				{
 					this.value = value;
 				}
-				this.querySelector("[value='" + original.replace(/'/g, "\\\'") + "']")?.remove();
 				this.__select_options = this.__select_options.filter(v => v.value !== original);
 			}
 		}
@@ -1478,7 +1503,7 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			// type to select will focus matching entries, but we don't want to stop the edit yet
 			if(typeof abort == "object" && abort.type == "blur")
 			{
-				if(abort.relatedTarget?.localName == "sl-menu-item")
+				if(abort.relatedTarget?.localName == this.optionTag)
 				{
 					return;
 				}
@@ -1530,14 +1555,12 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 					this.dropdown.panel.setAttribute("hidden", "");
 				});
 			}
-			this.syncItemsFromValue();
 		}
 
 		protected _handleSearchAbort(e)
 		{
 			this._activeControls.classList.remove("active");
 			this.clearSearch();
-			this.syncItemsFromValue();
 		}
 
 		/**
@@ -1552,7 +1575,14 @@ export const Et2WithSearchMixin = <T extends Constructor<LitElement>>(superclass
 			e.preventDefault();
 			return false;
 		}
+
+		protected _handleSearchClear(e)
+		{
+			e.stopImmediatePropagation();
+			e.preventDefault();
+			this.clearSearch();
+		}
 	}
 
 	return Et2WidgetWithSearch as unknown as Constructor<SearchMixinInterface> & T;
-}
+});

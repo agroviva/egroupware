@@ -424,9 +424,9 @@ class mail_zpush implements activesync_plugin_write, activesync_plugin_sendmail,
 		{
 			$disableRuler = true;
 		}
-		$beforePlain = $beforeHtml = "";
-		$beforeHtml = ($disableRuler ?'&nbsp;<br>':'&nbsp;<br><hr style="border:dotted 1px silver; width:90%; border:dotted 1px silver;">');
-		$beforePlain = ($disableRuler ?"\r\n\r\n":"\r\n\r\n-- \r\n");
+
+		$beforeHtml = !empty($disableRuler) ? '&nbsp;<br>' : '&nbsp;<br><hr style="border:dotted 1px silver; width:90%; border:dotted 1px silver;">';
+		$beforePlain = !empty($disableRuler) ?"\r\n\r\n" : "\r\n\r\n-- \r\n";
 		$sigText = Mail::merge($signature,array($GLOBALS['egw']->accounts->id2name($GLOBALS['egw_info']['user']['account_id'],'person_id')));
 		if ($this->debugLevel>0) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' Signature to use:'.$sigText);
 		$sigTextHtml = $beforeHtml.$sigText;
@@ -553,9 +553,9 @@ class mail_zpush implements activesync_plugin_write, activesync_plugin_sendmail,
 				$emailAddress = $addressObject->mailbox. ($addressObject->host ? '@'.$addressObject->host : '');
 				if ($ClientSideMeetingRequest === true && $allowSendingInvitations == 'sendifnocalnotif' &&
 					calendar_boupdate::email_update_requested($emailAddress, isset($cSMRMethod) ? $cSMRMethod : 'REQUEST',
-						$organizer && !strcasecmp($emailAddress, $organizer) ? 'CHAIR' : ''))
+						!empty($organizer) && !strcasecmp($emailAddress, $organizer) ? 'CHAIR' : ''))
 				{
-					ZLog::Write(LOGLEVEL_DEBUG,__METHOD__."(".__LINE__.") skiping mail to organizer '$organizer', as it will be send by calendar app");
+					ZLog::Write(LOGLEVEL_DEBUG,__METHOD__."(".__LINE__.") skiping mail to organizer ".json_encode($organizer??null).", as it will be send by calendar app");
 					continue;
 				}
 				$mailObject->AddAddress($emailAddress, $addressObject->personal);
@@ -563,7 +563,7 @@ class mail_zpush implements activesync_plugin_write, activesync_plugin_sendmail,
 			}
 		}
 		$ccCount = 0;
-		foreach((array)$ccMailAddr as $address) {
+		foreach($ccMailAddr ?? [] as $address) {
 			foreach(Mail::parseAddressList((function_exists('get_magic_quotes_gpc') && get_magic_quotes_gpc()?stripslashes($address):$address)) as $addressObject) {
 				$emailAddress = $addressObject->mailbox. ($addressObject->host ? '@'.$addressObject->host : '');
 				if ($ClientSideMeetingRequest === true && $allowSendingInvitations == 'sendifnocalnotif' && calendar_boupdate::email_update_requested($emailAddress)) continue;
@@ -572,7 +572,7 @@ class mail_zpush implements activesync_plugin_write, activesync_plugin_sendmail,
 			}
 		}
 		$bccCount = 0;
-		foreach((array)$bccMailAddr as $address) {
+		foreach($bccMailAddr ?? [] as $address) {
 			foreach(Mail::parseAddressList((function_exists('get_magic_quotes_gpc') && get_magic_quotes_gpc()?stripslashes($address):$address)) as $addressObject) {
 				$emailAddress = $addressObject->mailbox. ($addressObject->host ? '@'.$addressObject->host : '');
 				if ($ClientSideMeetingRequest === true && $allowSendingInvitations == 'sendifnocalnotif' && calendar_boupdate::email_update_requested($emailAddress)) continue;
@@ -583,7 +583,7 @@ class mail_zpush implements activesync_plugin_write, activesync_plugin_sendmail,
 		// typical organizer reply will end here with nothing send --> return true, because we suppressed the send above
 		if ($toCount+$ccCount+$bccCount == 0)
 		{
-			return $ClientSideMeetingRequest && $allowSendingInvitations === 'sendifnocalnotif' && $organizer ? true : 0; // noone to send mail to
+			return $ClientSideMeetingRequest && $allowSendingInvitations === 'sendifnocalnotif' && !empty($organizer) ? true : 0; // noone to send mail to
 		}
 		if ($ClientSideMeetingRequest === true && $allowSendingInvitations===false) return true;
 		// as we use our mailer (horde mailer) it is detecting / setting the mimetype by itself while creating the mail
@@ -715,6 +715,8 @@ class mail_zpush implements activesync_plugin_write, activesync_plugin_sendmail,
 						$x = $mailObject->AddStringAttachment($attachmentData['attachment'], $attachment['name'], $attachment['mimeType']);
 						ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' added part with number:'.$x);
 					}
+					// if we have attachment(s), we need to use multipart/mixed
+					$mailObject->addHeader('Content-Type', 'multipart/mixed');
 				}
 			}
 		} // end forward
@@ -797,7 +799,7 @@ class mail_zpush implements activesync_plugin_write, activesync_plugin_sendmail,
 				$asf = true;
 			}
 			if (count($folderArray) > 0) {
-				foreach((array)$bccMailAddr as $address) {
+				foreach($bccMailAddr ?? [] as $address) {
 					foreach(Mail::parseAddressList((function_exists('get_magic_quotes_gpc') && get_magic_quotes_gpc()?stripslashes($address):$address)) as $addressObject) {
 						$emailAddress = $addressObject->mailbox. ($addressObject->host ? '@'.$addressObject->host : '');
 						$mailAddr[] = array($emailAddress, $addressObject->personal);
@@ -952,113 +954,122 @@ class mail_zpush implements activesync_plugin_write, activesync_plugin_sendmail,
 				{
 					// fetch the body (try to gather data only once)
 					$css ='';
-					$bodyStruct = $this->mail->getMessageBody($id, 'html_only', '', null, true,$_folderName);
-					if ($this->debugLevel>2) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' html_only Struct:'.array2string($bodyStruct));
-					$body = $this->mail->getdisplayableBody($this->mail,$bodyStruct,true,false);
-					if ($this->debugLevel>3) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' html_only:'.$body);
-					if ($body != "" && (is_array($bodyStruct) && $bodyStruct[0]['mimeType']=='text/html')) {
-						// may be html
-						if ($this->debugLevel>0) ZLog::Write(LOGLEVEL_DEBUG, "MIME Body".' Type:html (fetched with html_only)');
-						$css = $this->mail->getStyles($bodyStruct);
-						$output->nativebodytype=2;
-					} else {
-						// plain text Message
-						if ($this->debugLevel>0) ZLog::Write(LOGLEVEL_DEBUG, "MIME Body".' Type:plain, fetch text (HTML, if no text available)');
-						$output->nativebodytype=1;
-						$bodyStruct = $this->mail->getMessageBody($id,'never_display', '', null, true,$_folderName); //'only_if_no_text');
-						if ($this->debugLevel>3) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' plain text Struct:'.array2string($bodyStruct));
-						$body = $this->mail->getdisplayableBody($this->mail,$bodyStruct,false,false);
-						if ($this->debugLevel>3) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' never display html(plain text only):'.$body);
-					}
-					// whatever format decode (using the correct encoding)
-					if ($this->debugLevel>3) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__."MIME Body".' Type:'.($output->nativebodytype==2?' html ':' plain ').$body);
-					//$body = html_entity_decode($body,ENT_QUOTES,$this->mail->detect_encoding($body));
-					// prepare plaintextbody
-					$plainBody='';
-					if ($output->nativebodytype == 2)
-					{
-						$bodyStructplain = $this->mail->getMessageBody($id,'never_display', '', null, true,$_folderName); //'only_if_no_text');
-						if(isset($bodyStructplain[0])&&isset($bodyStructplain[0]['error'])&&$bodyStructplain[0]['error']==1)
+					try {
+						$bodyStruct = $this->mail->getMessageBody($id, 'html_only', '', null, true,$_folderName);
+						if ($this->debugLevel>2) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' html_only Struct:'.array2string($bodyStruct));
+						$body = $this->mail->getdisplayableBody($this->mail,$bodyStruct,true,false);
+						if ($this->debugLevel>3) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' html_only:'.$body);
+						if ($body != "" && (is_array($bodyStruct) && $bodyStruct[0]['mimeType']=='text/html')) {
+							// may be html
+							if ($this->debugLevel>0) ZLog::Write(LOGLEVEL_DEBUG, "MIME Body".' Type:html (fetched with html_only)');
+							$css = $this->mail->getStyles($bodyStruct);
+							$output->nativebodytype=2;
+						} else {
+							// plain text Message
+							if ($this->debugLevel>0) ZLog::Write(LOGLEVEL_DEBUG, "MIME Body".' Type:plain, fetch text (HTML, if no text available)');
+							$output->nativebodytype=1;
+							$bodyStruct = $this->mail->getMessageBody($id,'never_display', '', null, true,$_folderName); //'only_if_no_text');
+							if ($this->debugLevel>3) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' plain text Struct:'.array2string($bodyStruct));
+							$body = $this->mail->getdisplayableBody($this->mail,$bodyStruct,false,false);
+							if ($this->debugLevel>3) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' never display html(plain text only):'.$body);
+						}
+						// whatever format decode (using the correct encoding)
+						if ($this->debugLevel>3) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__."MIME Body".' Type:'.($output->nativebodytype==2?' html ':' plain ').$body);
+						//$body = html_entity_decode($body,ENT_QUOTES,$this->mail->detect_encoding($body));
+						// prepare plaintextbody
+						$plainBody='';
+						if ($output->nativebodytype == 2)
 						{
-							$plainBody = Api\Mail\Html::convertHTMLToText($body); // always display with preserved HTML
+							$bodyStructplain = $this->mail->getMessageBody($id,'never_display', '', null, true,$_folderName); //'only_if_no_text');
+							if(isset($bodyStructplain[0])&&isset($bodyStructplain[0]['error'])&&$bodyStructplain[0]['error']==1)
+							{
+								$plainBody = Api\Mail\Html::convertHTMLToText($body); // always display with preserved HTML
+							}
+							else
+							{
+								$plainBody = $this->mail->getdisplayableBody($this->mail,$bodyStructplain,false,false);
+							}
+						}
+						//if ($this->debugLevel>0) ZLog::Write(LOGLEVEL_DEBUG, "MIME Body".$body);
+						$plainBody = preg_replace("/<style.*?<\/style>/is", "", (strlen($plainBody)?$plainBody:$body));
+						// remove all other html
+						$plainBody = preg_replace("/<br.*>/is","\r\n",$plainBody);
+						$plainBody = strip_tags($plainBody);
+						if ($this->debugLevel>3 && $output->nativebodytype==1) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' Plain Text:'.$plainBody);
+						//$body = str_replace("\n","\r\n", str_replace("\r","",$body)); // do we need that?
+
+						if ($bpReturnType==2) //SYNC_BODYPREFERENCE_HTML
+						{
+							if ($this->debugLevel>0) ZLog::Write(LOGLEVEL_DEBUG, "HTML Body with requested pref 2");
+							// Send HTML if requested and native type was html
+							$output->asbody->type = 2;
+							$htmlbody = '<html>'.
+								'<head>'.
+								'<meta name="Generator" content="Z-Push">'.
+								'<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'.
+								$css.
+								'</head>'.
+								'<body>';
+							if ($output->nativebodytype==2)
+							{
+								if ($css) Api\Mail\Html::replaceTagsCompletley($body,'style');
+								// as we fetch html, and body is HTML, we may not need to handle this
+								$htmlbody .= $body;
+							}
+							else
+							{
+								// html requested but got only plaintext, so fake html
+								$htmlbody .= str_replace("\n","<BR>",str_replace("\r","<BR>", str_replace("\r\n","<BR>",$plainBody)));
+							}
+							$htmlbody .= '</body>'.
+									'</html>';
+
+							if(isset($truncsize) && strlen($htmlbody) > $truncsize)
+							{
+								$htmlbody = Utils::Utf8_truncate($htmlbody,$truncsize);
+								$output->asbody->truncated = 1;
+							}
+							// output->nativebodytype is used as marker that the original message was of type ... but is now converted to, as type 2 is requested.
+							$output->nativebodytype = 2;
+							$output->asbody->data = StringStreamWrapper::Open($htmlbody);
+							$output->asbody->estimatedDataSize = strlen($htmlbody);
 						}
 						else
 						{
-							$plainBody = $this->mail->getdisplayableBody($this->mail,$bodyStructplain,false,false);
+							// Send Plaintext as Fallback or if original body is plainttext
+							if ($this->debugLevel>0) ZLog::Write(LOGLEVEL_DEBUG, "Plaintext Body:".$plainBody);
+							/* we use plainBody (set above) instead
+							$bodyStruct = $this->mail->getMessageBody($id,'only_if_no_text'); //'never_display');
+							$plain = $this->mail->getdisplayableBody($this->mail,$bodyStruct);
+							$plain = html_entity_decode($plain,ENT_QUOTES,$this->mail->detect_encoding($plain));
+							$plain = strip_tags($plain);
+							//$plain = str_replace("\n","\r\n",str_replace("\r","",$plain));
+							*/
+							$output->asbody->type = 1;
+							$output->nativebodytype = 1;
+							if(isset($truncsize) &&
+								strlen($plainBody) > $truncsize)
+							{
+								$plainBody = Utils::Utf8_truncate($plainBody, $truncsize);
+								$output->asbody->truncated = 1;
+							}
+							$output->asbody->data = StringStreamWrapper::Open((string)$plainBody !== '' ? $plainBody : ' ');
+							$output->asbody->estimatedDataSize = strlen($plainBody);
+						}
+						// In case we have nothing for the body, send at least a blank...
+						// dw2412 but only in case the body is not rtf!
+						if ($output->asbody->type != 3 && !isset($output->asbody->data))
+						{
+							$output->asbody->data = StringStreamWrapper::Open(" ");
+							$output->asbody->estimatedDataSize = 1;
 						}
 					}
-					//if ($this->debugLevel>0) ZLog::Write(LOGLEVEL_DEBUG, "MIME Body".$body);
-					$plainBody = preg_replace("/<style.*?<\/style>/is", "", (strlen($plainBody)?$plainBody:$body));
-					// remove all other html
-					$plainBody = preg_replace("/<br.*>/is","\r\n",$plainBody);
-					$plainBody = strip_tags($plainBody);
-					if ($this->debugLevel>3 && $output->nativebodytype==1) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.__LINE__.' Plain Text:'.$plainBody);
-					//$body = str_replace("\n","\r\n", str_replace("\r","",$body)); // do we need that?
-
-					if ($bpReturnType==2) //SYNC_BODYPREFERENCE_HTML
-					{
-						if ($this->debugLevel>0) ZLog::Write(LOGLEVEL_DEBUG, "HTML Body with requested pref 2");
-						// Send HTML if requested and native type was html
-						$output->asbody->type = 2;
-						$htmlbody = '<html>'.
-							'<head>'.
-							'<meta name="Generator" content="Z-Push">'.
-							'<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'.
-							$css.
-							'</head>'.
-							'<body>';
-						if ($output->nativebodytype==2)
-						{
-							if ($css) Api\Mail\Html::replaceTagsCompletley($body,'style');
-							// as we fetch html, and body is HTML, we may not need to handle this
-							$htmlbody .= $body;
-						}
-						else
-						{
-							// html requested but got only plaintext, so fake html
-							$htmlbody .= str_replace("\n","<BR>",str_replace("\r","<BR>", str_replace("\r\n","<BR>",$plainBody)));
-						}
-						$htmlbody .= '</body>'.
-								'</html>';
-
-						if(isset($truncsize) && strlen($htmlbody) > $truncsize)
-						{
-							$htmlbody = Utils::Utf8_truncate($htmlbody,$truncsize);
-							$output->asbody->truncated = 1;
-						}
-						// output->nativebodytype is used as marker that the original message was of type ... but is now converted to, as type 2 is requested.
-						$output->nativebodytype = 2;
-						$output->asbody->data = StringStreamWrapper::Open($htmlbody);
-						$output->asbody->estimatedDataSize = strlen($htmlbody);
-					}
-					else
-					{
-						// Send Plaintext as Fallback or if original body is plainttext
-						if ($this->debugLevel>0) ZLog::Write(LOGLEVEL_DEBUG, "Plaintext Body:".$plainBody);
-						/* we use plainBody (set above) instead
-						$bodyStruct = $this->mail->getMessageBody($id,'only_if_no_text'); //'never_display');
-						$plain = $this->mail->getdisplayableBody($this->mail,$bodyStruct);
-						$plain = html_entity_decode($plain,ENT_QUOTES,$this->mail->detect_encoding($plain));
-						$plain = strip_tags($plain);
-						//$plain = str_replace("\n","\r\n",str_replace("\r","",$plain));
-						*/
+					catch(Api\Exception\WrongParameter $e) {
+						// we throw, if body is not found, e.g. whole message is a PDF or an image --> return an empty body (1 space)
 						$output->asbody->type = 1;
 						$output->nativebodytype = 1;
-						if(isset($truncsize) &&
-							strlen($plainBody) > $truncsize)
-						{
-							$plainBody = Utils::Utf8_truncate($plainBody, $truncsize);
-							$output->asbody->truncated = 1;
-						}
-						$output->asbody->data = StringStreamWrapper::Open((string)$plainBody !== '' ? $plainBody : ' ');
-						$output->asbody->estimatedDataSize = strlen($plainBody);
-					}
-					// In case we have nothing for the body, send at least a blank...
-					// dw2412 but only in case the body is not rtf!
-					if ($output->asbody->type != 3 && !isset($output->asbody->data))
-					{
-						$output->asbody->data = StringStreamWrapper::Open(" ");
-						$output->asbody->estimatedDataSize = 1;
+						$output->asbody->data = StringStreamWrapper::Open($error=' ');  //$e->getMessage().' ('.$e->getCode().')');
+						$output->asbody->estimatedDataSize = strlen($error);
 					}
 				}
 			}
@@ -1074,19 +1085,23 @@ class mail_zpush implements activesync_plugin_write, activesync_plugin_sendmail,
 			} else {
 				$output->flag->flagstatus = 0;
 			}
-			if (!empty($headers['answered']))
+			if (!empty($headers['forwarded']))
 			{
-				$output->lastverexecuted = AS_REPLYTOSENDER;
+				$output->lastverbexecuted = AS_FORWARD;
 			}
-			elseif (!empty($headers['forwarded']))
+			elseif (!empty($headers['answered']))
 			{
-				$output->lastverexecuted = AS_FORWARD;
+				$output->lastverbexecuted = AS_REPLYTOSENDER;
 			}
 			$output->subject = $headers['subject'];
 			$output->importance = $headers['priority'] > 3 ? 0 :
 				($headers['priority'] < 3 ? 2 : 1) ;
 			$output->datereceived = $this->mail->_strtotime($headers['date'], 'ts', false);  // false = servertime
-			$output->to = $headers['to_address'];
+			$output->to = $headers['to_address'] ?? null;
+			if (!empty($headers['additional_to_addresses']))
+			{
+				$output->to = array_merge((array)$output->to, $headers['additional_to_addresses']);
+			}
 			if (!empty($headers['to'])) $output->displayto = $headers['to_address']; //$headers['FETCHED_HEADER']['to_name']
 			$output->from = $headers['sender_address'];
 			if (!empty($headers['cc_addresses'])) $output->cc = $headers['cc_addresses'];
@@ -1793,18 +1808,19 @@ class mail_zpush implements activesync_plugin_write, activesync_plugin_sendmail,
 		if (!$this->mail->folderIsSelectable($folder))
 		{
 			ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.": could not select folder $folder returning fake state");
-			$syncstate = "M:".'0'."-R:".'0'."-U:".'0'."-NUID:".'0'."-UIDV:".'0';
+			$syncstate = "M:".'0'."-R:".'0'."-U:".'0'."-NUID:".'0'."-UIDV:".'0'."-MODSEQ:".'0';
 			return array();
 		}
 
 		$this->mail->reopen($folder);
 
-		if (!($status = $this->mail->getFolderStatus($folder,$ignoreStatusCache=true)))
+		if (!($status = $this->mail->getFolderStatus($folder, true, false, true, true)))
 		{
 			ZLog::Write(LOGLEVEL_DEBUG,__METHOD__.": could not stat folder $folder ");
 			return false;
 		}
-		$syncstate = "M:". $status['messages'] ."-R:". $status['recent'] ."-U:". $status['unseen']."-NUID:".$status['uidnext']."-UIDV:".$status['uidvalidity'];
+		$syncstate = "M:".$status['messages']."-R:".$status['recent']."-U:".$status['unseen'].
+			"-NUID:".$status['uidnext']."-UIDV:".$status['uidvalidity']."-MODSEQ:".($status['highestmodseq'] ?? '0');
 
 		if ($this->debugLevel) ZLog::Write(LOGLEVEL_DEBUG,__METHOD__."($folderid, ...) $folder ($account) returning ".array2string($syncstate));
 		return array();

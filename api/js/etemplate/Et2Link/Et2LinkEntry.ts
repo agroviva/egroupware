@@ -6,8 +6,8 @@
  * @link https://www.egroupware.org
  * @author Nathan Gray
  */
-
-import {css, html, LitElement, PropertyValues, SlotMixin} from "@lion/core";
+import {css, html, LitElement, PropertyValues} from "lit";
+import {SlotMixin} from "@lion/core";
 import {Et2LinkAppSelect} from "./Et2LinkAppSelect";
 import {Et2InputWidget} from "../Et2InputWidget/Et2InputWidget";
 import {FormControlMixin} from "@lion/form-core";
@@ -73,7 +73,13 @@ export class Et2LinkEntry extends Et2InputWidget(FormControlMixin(SlotMixin(LitE
 			/**
 			 * Displayed in the search / select when no value is selected
 			 */
-			placeholder: {type: String}
+			placeholder: {type: String},
+
+			/**
+			 * Additional search parameters that are passed to the server
+			 * when we query searchUrl
+			 */
+			searchOptions: {type: Object}
 		}
 	}
 
@@ -219,6 +225,19 @@ export class Et2LinkEntry extends Et2InputWidget(FormControlMixin(SlotMixin(LitE
 		return this._appNode?.value || "";
 	}
 
+	set searchOptions(options)
+	{
+		this.updateComplete.then(() =>
+		{
+			this._searchNode.searchOptions = options;
+		});
+	}
+
+	get searchOptions()
+	{
+		return this._searchNode?.searchOptions;
+	}
+
 	get _appNode() : Et2LinkAppSelect
 	{
 		return this.querySelector("[slot='app']");
@@ -300,6 +319,7 @@ export class Et2LinkEntry extends Et2InputWidget(FormControlMixin(SlotMixin(LitE
 	protected _handleEntryClear(event)
 	{
 		this.classList.remove("hideApp")
+		this._searchNode.value = "";
 		this._searchNode.focus();
 
 		this.dispatchEvent(new Event("change"));
@@ -340,7 +360,7 @@ export class Et2LinkEntry extends Et2InputWidget(FormControlMixin(SlotMixin(LitE
 	{
 		if(this.onlyApp)
 		{
-			return <string>this._searchNode?.value;
+			return <string>this._searchNode?.value ?? "";
 		}
 		return this._searchNode ? <LinkInfo>{
 			id: this._searchNode.value,
@@ -387,7 +407,7 @@ export class Et2LinkEntry extends Et2InputWidget(FormControlMixin(SlotMixin(LitE
 		}
 		else
 		{
-			this.app = value.app;
+			this.app = this._searchNode.app = value.app;
 			this._searchNode.value = value.id;
 		}
 		this.classList.toggle("hideApp", Boolean(value.id));

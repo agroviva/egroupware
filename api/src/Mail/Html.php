@@ -181,7 +181,7 @@ class Html
 				if ($addbracesforendtag === false )
 				{
 					if (stripos($_body,'<'.$tag)!==false)  $ct = preg_match_all('#<'.$tag.'(?:\s.*)?>(.+)'.$endtag.'#isU', $_body, $found);
-					if ($ct>0)
+					if (isset($ct) && $ct > 0)
 					{
 						//error_log(__METHOD__.__LINE__.array2string($found[0]));
 						// only replace what we have found
@@ -594,5 +594,16 @@ class Html
 		}
 		//error_log(__METHOD__.__LINE__.array2string($html2ret));
 		return $html2ret;
+	}
+
+	/**
+	 * Convert plain text into HTML replacing empty lines (double newline) with paragraphs and single newlines with <br>
+	 *
+	 * @param string $text
+	 * @return string
+	 */
+	public static function convertTextToHtml($text)
+	{
+		return '<p>'.implode("</p>\n<p>", array_map('nl2br', preg_split("/\r?\n\r?\n/", $text)))."</p>\n";
 	}
 }

@@ -151,6 +151,7 @@ class timesheet_bo extends Api\Storage
 	 * Name of the timesheet table storing custom fields
 	 */
 	const EXTRA_TABLE = 'egw_timesheet_extra';
+	const TABLE = 'egw_timesheet';
 
 	/**
 	* Columns to search when user does a text search
@@ -166,7 +167,7 @@ class timesheet_bo extends Api\Storage
 
 	function __construct()
 	{
-		parent::__construct(TIMESHEET_APP,'egw_timesheet',self::EXTRA_TABLE,'','ts_extra_name','ts_extra_value','ts_id');
+		parent::__construct(TIMESHEET_APP,self::TABLE,self::EXTRA_TABLE,'','ts_extra_name','ts_extra_value','ts_id');
 
 		$this->config_data = Api\Config::read(TIMESHEET_APP);
 		$this->quantity_sum = $this->config_data['quantity_sum'] == 'true';
@@ -376,6 +377,10 @@ class timesheet_bo extends Api\Storage
 		{
 			$data =& $this->data;
 		}
+		if (!$data)
+		{
+			return null;    // entry not found
+		}
 		if (!is_array($data))
 		{
 			$save_data = $this->data;
@@ -453,14 +458,15 @@ class timesheet_bo extends Api\Storage
 		{
 			$extra_cols[] = $total_sql.' AS ts_total';
 		}
-		if (!isset($filter['ts_owner']) || !count((array)$filter['ts_owner']))
-		{
-			$filter['ts_owner'] = array_keys($this->grants);
-		}
 		// $filter['ts_owner'] === false --> no ACL checks
-		elseif ($filter['ts_owner'] === false)
+		if (isset($filter['ts_owner']) && $filter['ts_owner'] === false)
 		{
 			$filter['ts_owner'] = '';
+		}
+		// empty --> all the user has access too
+		elseif (empty($filter['ts_owner']))
+		{
+			$filter['ts_owner'] = array_keys($this->grants);
 		}
 		else
 		{

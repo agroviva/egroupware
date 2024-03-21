@@ -11,10 +11,10 @@
 /* Basic information about this app */
 $setup_info['api']['name']      = 'api';
 $setup_info['api']['title']     = 'EGroupware API';
-$setup_info['api']['version'] = '23.1.004';
+$setup_info['api']['version'] = '23.1.006';
 $setup_info['api']['versions']['current_header'] = '1.29';
 // maintenance release in sync with changelog in doc/rpm-build/debian.changes
-$setup_info['api']['versions']['maintenance_release'] = '23.1.20230824';
+$setup_info['api']['versions']['maintenance_release'] = '23.1.20240304';
 $setup_info['api']['enable']    = 3;
 $setup_info['api']['app_order'] = 1;
 $setup_info['api']['license'] = 'GPL';
@@ -71,7 +71,7 @@ $setup_info['api']['hooks']['vfs_rmdir'] = 'EGroupware\\Api\\Vfs\\Sharing::vfsUp
 
 // hook to update SimpleSAMLphp config
 $setup_info['api']['hooks']['setup_config'] = [\EGroupware\Api\Auth\Saml::class.'::setupConfig', \EGroupware\Api\Accounts\Import::class.'::setupConfig'];
-$setup_info['api']['hooks']['login_discovery'] = \EGroupware\Api\Auth\Saml::class.'::discovery';
+$setup_info['api']['hooks']['login_discovery'] = [\EGroupware\Api\Auth\Saml::class.'::discovery', \EGroupware\Api\Auth\Openidconnect::class.'::discovery'];
 
 // installation checks
 $setup_info['api']['check_install'] = array(

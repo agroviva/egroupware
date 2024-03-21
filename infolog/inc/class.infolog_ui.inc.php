@@ -2052,13 +2052,14 @@ class infolog_ui
 			{
 				Framework::window_close(lang('Permission denied!'));
 			}
-			if (is_numeric($_REQUEST['cat_id']))
-			{
-				$content['info_cat'] = (int)$_REQUEST['cat_id'];
-			}
 			if (!$content)
 			{
 				$content['info_cat'] = $this->prefs['cat_add_default'];
+				$content['info_modifier'] = $GLOBALS['egw_info']['user']['account_id'];
+			}
+			if (is_numeric($_REQUEST['cat_id']))
+			{
+				$content['info_cat'] = (int)$_REQUEST['cat_id'];
 			}
 			if ($_GET['msg']) $content['msg'] = strip_tags($_GET['msg']);	// dont allow HTML!
 
@@ -2195,6 +2196,12 @@ class infolog_ui
 			// remove types owned by groups the user has no edit grant (current type is made readonly)
 			foreach($this->bo->group_owners as $type => $group)
 			{
+				// Allow the group if the entry is unsaved and they have add access
+				if(!$content['info_id'] && (($this->bo->grants[$group] ?? 0) & Acl::ADD))
+				{
+					continue;
+				}
+
 				if (!(($this->bo->grants[$group]??0) & Acl::EDIT))
 				{
 					if ($type == $content['info_type'])

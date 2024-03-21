@@ -13,24 +13,24 @@ attempt to use correct mimetype for ftp instead of default 'application/octet-st
 authentication / accounts	setup	hu	Azonosítás / Azonosítók
 auto create account records for authenticated users	setup	hu	Hitelesített felhasználóknak automatikus hozzáférés generálása.
 back to user login	setup	hu	Vissza a felhasználói bejelentkezéshez
-bottom	setup	hu	legalsó
+bottom	setup	hu	Legalsó
 cancel	setup	hu	Mégsem
-charset	setup	hu	utf-8
+charset	setup	hu	Betűkészlet
 check installation	setup	hu	Telepítés ellenőrzése
 check ip address of all sessions	setup	hu	Összes session IP cím ellenőrzése
 completed	setup	hu	Teljesítve
 configuration	setup	hu	Konfiguráció
-contain	setup	hu	tartalmaz
+contain	setup	hu	Tartalmaz
 continue	setup	hu	Folytat
 convert	setup	hu	Konvertál
 country selection	setup	hu	Ország kiválasztása
 create	setup	hu	Létrehoz
 created	setup	hu	Létrehozva
 current version	setup	hu	Aktuális verzió
-day	setup	hu	nap
+day	setup	hu	Nap
 db backup and restore	setup	hu	Adatbázis mentés és helyreállítás
-default	setup	hu	alapértelmezett
-default file system space per user/group ?	setup	hu	Az alapértelmezett fájlrendszerméret felhasználónként ?
+default	setup	hu	Alapértelmezett
+default file system space per user/group ?	setup	hu	Az alapértelmezett fájlrendszerméret felhasználónként?
 delete	setup	hu	Törlés
 deny all users access to grant other users access to their entries ?	setup	hu	Minden felhasználó esetén tiltsa a más felhasználóknak kiadható jogosultság beállítást? Ez esetben pl. nem oszthatja meg a saját naptárát más felhasználóval (ez csak az egyedi engedélyezést befolyásolja, a csoport jogosultságra nincs hatással!)
 domain	setup	hu	Tartomány
@@ -42,6 +42,14 @@ enter the title for your site	setup	hu	A webhely megnevezése
 enter your default ftp server	setup	hu	Az alapértelmezett FTP-kiszolgáló
 enter your http proxy server	setup	hu	A HTTP-proxy kiszolgáló
 enter your http proxy server port	setup	hu	A HTTP-proxy kiszolgáló portszáma
+error searching "dn=%1" for "%2"!	setup	hu	Hiba a "DN=%1" keresése a "%2" keresőben!
+error uploading your backup!	setup	hu	Hiba a biztonsági mentés feltöltése!
+every	setup	hu	Minden
+export has been completed!	setup	hu	Exportálás befejeződött!
+failed to mount backup directory!	setup	hu	Sikerült a biztonsági mentés könyvtárát csatlakoztatni!
+failed updating user "%1" dn="%2"!	setup	hu	Sikertelen a "%1" DN="%2" felhasználó frissítése!
+failed writing configuration file header.inc.php, check the permissions !!!	setup	hu	Sikertelenül íródott a header.inc.php konfigurációs fájl, ellenőrizze a jogosultságokat!
+fallback authentication	setup	hu	Visszaeső hitelesítés
 file	setup	hu	Állomány
 filename	setup	hu	Állománynév
 go back	setup	hu	Visszatérés
@@ -56,7 +64,7 @@ ldap encryption type	setup	hu	LDAP titkosítás típusa
 ldap groups context	setup	hu	LDAP csoport környezet
 ldap host	setup	hu	LDAP hoszt
 ldap root password	setup	hu	LDAP root jelszava
-ldap rootdn	setup	hu	LDAP rootdn
+ldap rootdn	setup	hu	LDAP root DN
 mail server login type	setup	hu	Mail szerver bejelentkezés típusa
 maximum account id (e.g. 65535 or 1000000)	setup	hu	Legnagyobb felhasználói azonosító (pl. 65535 vagy 1000000)
 min backup count	setup	hu	A mentések maximális száma (nulla: minden)
@@ -65,22 +73,35 @@ modified	setup	hu	Módosított
 month	setup	hu	Hónap
 new	setup	hu	Új
 next run	setup	hu	Következő futtatás
-no algorithms available	setup	hu	nincsenek elérhető algoritmusok
-no modes available	setup	hu	nincs elérhetó mód
-not set	setup	hu	nincs megadva
-one month	setup	hu	egy hónap
-one week	setup	hu	egy hét
+no algorithms available	setup	hu	Nincsenek elérhető algoritmusok
+no modes available	setup	hu	Nincs elérhetó mód
+not set	setup	hu	Nincs megadva
+one month	setup	hu	Egy hónap
+one week	setup	hu	Egy hét
+optional, if only authentication and anonymous search is enabled	setup	hu	opcionális, ha csak a hitelesítés ÉS az anonim keresés van engedélyezve
 or	setup	hu	vagy
+or leave empty and select openidconnect as authentication type above for single sign on	setup	hu	vagy hagyja üresen, és válassza az OpenID Connect hitelesítési típust a fenti egyszeri bejelentkezéshez.
+or leave empty and select saml as authentication type above for single sign on	setup	hu	vagy hagyja üresen, és válassza a SAML-t hitelesítési típusként a fenti egyszeri bejelentkezéshez.
+password	setup	hu	Jelszó
 password for smtp-authentication	setup	hu	Jelszó az SMTP-azonosításhoz
+passwords --> sql	setup	hu	Jelszavak --> SQL
 path information	setup	hu	Útvonal-információ
 re-enter password	setup	hu	Jelszó újra
-remove	setup	hu	eltávolítás
+regular expression to filter by dn	setup	hu	Szabályos kifejezés a DN szerinti szűréshez
+rejected lines	setup	hu	Elutasított sorok
+remove	setup	hu	Eltávolítás
+remove all	setup	hu	Összes eltávolítása
+rename	setup	hu	Átnevezés
+replace username and email	setup	hu	Felhasználónév és e-mail cím cseréje
+replace username and keep email	setup	hu	Felhasználónév cseréje és email megtartása
+required to change passwords	setup	hu	Jelszavak megváltoztatásához szükséges
+requires "reset password" privilege, to change passwords!	setup	hu	"Jelszó visszaállítása" jogosultság szükséges a jelszavak megváltoztatásához!
 select where you want to store/retrieve user accounts	setup	hu	Válassza ki, hol kívánja tárolni a felhasználói hozzáféréseket
 selectbox	setup	hu	Kiválasztó doboz
 show 'powered by' logo on	setup	hu	'Powered by' logó megjelenítése
 size	setup	hu	Méret
 text entry	setup	hu	Szöveges bejegyzés
-two weeks	setup	hu	két hét
+two weeks	setup	hu	Két hét
 use cookies to pass sessionid	setup	hu	Használjon sütiket a session azonosító átadásához
 use pure html compliant code (not fully working yet)	setup	hu	Használjon tiszta HTML kódot (nem teljesen működik egyelőre)
 user for smtp-authentication (leave it empty if no auth required)	setup	hu	Felhasználó az SMTP hitelesítéshez (hagyja üresen, ha nem szükséges hitelesíteni)

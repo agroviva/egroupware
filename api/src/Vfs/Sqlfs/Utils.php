@@ -130,7 +130,14 @@ class Utils extends StreamWrapper
 				'check_only' => $check_only)
 		) as $app_msgs)
 		{
-			if ($app_msgs) $msgs = array_merge($msgs, $app_msgs);
+			if ($app_msgs && is_array($app_msgs[0]))
+			{
+				$msgs = array_merge($msgs, ...$app_msgs);
+			}
+			elseif ($app_msgs)
+			{
+				$msgs = array_merge($msgs, $app_msgs);
+			}
 		}
 
 		// also run quota recalc as fsck might have (re-)moved files
@@ -258,13 +265,15 @@ class Utils extends StreamWrapper
 		$msgs = array();
 		$limit = 500;
 		$offset = 0;
-		$select_stmt = self::$pdo->prepare('SELECT fs_id FROM '.self::TABLE.
-			" WHERE fs_mime!='httpd/unix-directory' AND fs_content IS NULL AND fs_link IS NULL LIMIT $limit OFFSET :offset");
+		$select_stmt = self::$pdo->prepare('SELECT fs_id,fs_size FROM '.self::TABLE.
+			" WHERE fs_mime!='httpd/unix-directory' AND fs_content IS NULL AND fs_link IS NULL AND (fs_s3_flags&7)=0".
+			" LIMIT $limit OFFSET :offset");
 		$select_stmt->setFetchMode(PDO::FETCH_ASSOC);
 		do {
 			$num = 0;
 			$select_stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-			foreach($select_stmt->execute() as $row)
+			$select_stmt->execute();
+			foreach($select_stmt as $row)
 			{
 				++$num;
 				if (!file_exists($phy_path=self::_fs_path($row['fs_id'])))
@@ -296,13 +305,44 @@ class Utils extends StreamWrapper
 						}
 					}
 				}
+				// file is empty and NOT in /templates/ or /etemplates/ which use 0-byte files as delete marker
+				elseif (!$row['fs_size'] && !filesize($phy_path) && !preg_match('#^/e?templates/#', $path))
+				{
+					if ($check_only)
+					{
+						++$offset;
+						$msgs[] = lang('File %1 is empty %2!',
+							$path.' (#'.$row['fs_id'].')',$phy_path);
+					}
+					else
+					{
+						if (!isset($stmt))
+						{
+							$stmt = self::$pdo->prepare('DELETE FROM '.self::TABLE.' WHERE fs_id=:fs_id');
+							$stmt_props = self::$pdo->prepare('DELETE FROM '.self::PROPS_TABLE.' WHERE fs_id=:fs_id');
+						}
+						if ($stmt->execute(array('fs_id' => $row['fs_id'])) &&
+							$stmt_props->execute(array('fs_id' => $row['fs_id'])))
+						{
+							$msgs[] = lang('File %1 is empty %2 --> file removed!',$path,$phy_path);
+							unlink($phy_path);
+						}
+						else
+						{
+							++$offset;
+							$msgs[] = lang('File %1 is empty %2 --> failed to remove file!',
+								$path.' (#'.$row['fs_id'].')',$phy_path);
+						}
+					}
+
+				}
 			}
 		}
 		while ($num >= $limit);
 
 		if ($check_only && $msgs)
 		{
-			$msgs[] = lang('Files without content in physical filesystem will be removed.');
+			$msgs[] = lang('Files without content in physical filesystem or empty files will be removed.');
 		}
 		return $msgs;
 	}
@@ -315,12 +355,12 @@ class Utils extends StreamWrapper
 	const LOST_N_FOUND_GRP = 'Admins';
 
 	/**
-	 * Check and optionally fix unconnected nodes - parent directory does not (longer) exists:
+	 * Check and optionally fix unconnected nodes - parent directory does no (longer) exists or connected to itself:
 	 *
 	 * SELECT fs.*
 	 * FROM egw_sqlfs fs
 	 * LEFT JOIN egw_sqlfs dir ON dir.fs_id=fs.fs_dir
-	 * WHERE fs.fs_id > 1 && dir.fs_id IS NULL
+	 * WHERE fs.fs_id > 1 AND (dir.fs_id IS NULL OR fs.fs_id=fs.fs_dir)
 	 *
 	 * @param boolean $check_only =true
 	 * @return array with messages / found problems
@@ -334,13 +374,14 @@ class Utils extends StreamWrapper
 		$offset = 0;
 		$stmt = self::$pdo->prepare('SELECT fs.* FROM ' . self::TABLE . ' fs' .
 			' LEFT JOIN ' . self::TABLE . ' dir ON dir.fs_id=fs.fs_dir' .
-			" WHERE fs.fs_id > 1 AND dir.fs_id IS NULL LIMIT $limit OFFSET :offset");
+			" WHERE fs.fs_id > 1 AND (dir.fs_id IS NULL OR fs.fs_id=fs.fs_dir) LIMIT $limit OFFSET :offset");
 		$stmt->setFetchMode(PDO::FETCH_ASSOC);
 		do
 		{
 			$num = 0;
 			$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-			foreach ($stmt->execute() as $row)
+			$stmt->execute();
+			foreach ($stmt as $row)
 			{
 				++$num;
 				if ($check_only)

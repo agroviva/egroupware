@@ -158,7 +158,10 @@ class Customfields extends Transformer
 					$f= substr($f,1);
 					$negate_fields[]= $f;
 				}
-				$field_filters []= $f;
+				elseif(trim($f))
+				{
+					$field_filters [] = $f;
+				}
 			}
 		}
 
@@ -176,7 +179,7 @@ class Customfields extends Transformer
 			}
 
 			// Remove filtered fields
-			if (!empty($field_filters) && in_array($key, $negate_fields) && in_array($key, $field_filters))
+			if(!empty($field_filters) && !in_array($key, $field_filters) || !empty($negate_fields) && in_array($key, $negate_fields))
 			{
 				unset($fields[$key]);
 			}
@@ -270,7 +273,10 @@ class Customfields extends Transformer
 
 		// Re-format date custom fields from Y-m-d
 		$field_settings =& self::get_array(self::$request->modifications, "{$this->id}[customfields]",true);
-		if (true) $field_settings = array();
+		if(!is_array($field_settings))
+		{
+			$field_settings = array();
+		}
 		$link_types = Api\Link::app_list();
 		foreach($fields as $fname => $field)
 		{
@@ -475,9 +481,9 @@ class Customfields extends Transformer
 		{
 			foreach(array_keys($value_in) as $field)
 			{
-				$field_settings = $customfields[$fname = substr($field, strlen($this->attrs['prefix']))];
+				$field_settings = $customfields[$fname = substr($field, strlen($this->attrs['prefix']))] ?? null;
 
-				if((string)$use_private !== '' &&    // are only (non-)private fields requested
+				if(!isset($field_settings) || (string)$use_private !== '' &&    // are only (non-)private fields requested
 					(boolean)$field_settings['private'] != ($use_private != '0'))
 				{
 					continue;

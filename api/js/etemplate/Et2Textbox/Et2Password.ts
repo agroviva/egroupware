@@ -11,7 +11,9 @@
 import {Et2InvokerMixin} from "../Et2Url/Et2InvokerMixin";
 import {Et2Textbox} from "./Et2Textbox";
 import {Et2Dialog} from "../Et2Dialog/Et2Dialog";
-import {classMap, html, ifDefined} from "@lion/core";
+import {html} from "lit";
+import {classMap} from "lit/directives/class-map.js";
+import {ifDefined} from "lit/directives/if-defined.js";
 import {egw} from "../../jsapi/egw_global";
 
 const isChromium = navigator.userAgentData?.brands.some(b => b.brand.includes('Chromium'));
@@ -91,7 +93,7 @@ export class Et2Password extends Et2InvokerMixin(Et2Textbox)
 		if (this._invokerNode)
 		{
 			const invokerNode = /** @type {HTMLElement & {disabled: boolean}} */ (this._invokerNode);
-			invokerNode.disabled = this.disabled;
+			invokerNode.disabled = this.disabled || this.readonly;
 		}
 	}
 
@@ -161,6 +163,8 @@ export class Et2Password extends Et2InvokerMixin(Et2Textbox)
 			this.type = this.visible ? 'text' : 'password';
 			return;
 		}
+
+		if (this.plaintext) return;	// no need to query user-password, if the password is plaintext
 
 		// Need username & password to decrypt
 		Et2Dialog.show_prompt(

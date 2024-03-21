@@ -219,7 +219,7 @@ class Import
 			if (in_array('groups', explode('+', $type)))
 			{
 				// for AD always do a full import, as AD seems not to update the groups modification date, if only members change
-				foreach($this->groups($initial_import || $type === 'ads' ? null : $GLOBALS['egw_info']['server']['account_import_lastrun'],
+				foreach($this->groups($initial_import || $source === 'ads' ? null : $GLOBALS['egw_info']['server']['account_import_lastrun'],
 					in_array('local', explode('+', $type)) ? 'no' : $delete,
 					$groups, $set_members, $dry_run, $sql_groups) as $name => $val)
 				{
@@ -288,6 +288,40 @@ class Import
 						$last_modified = $contact['modified'];
 					}
 					$account = $this->accounts->read($contact['account_id']);
+					// if we sync groups, change (numeric) account_id's in primary group and memberships, in case they are different
+					if (in_array('groups', explode('+', $type)))
+					{
+						static $primary_groups=[];
+						if (!isset($primary_groups[$account['account_primary_group']]) &&
+							($group = $this->accounts->read($account['account_primary_group'])))
+						{
+							$primary_groups[$account['account_primary_group']] = $group['account_lid'];
+						}
+						if (($primary_grp_name=$primary_groups[$account['account_primary_group']] ?? null) &&
+							($grp_id=$this->accounts_sql->name2id($primary_grp_name, 'account_lid', 'g')))
+						{
+							$account['account_primary_group'] = $grp_id;
+						}
+						// LDAP backend does not query it automatic
+						if (!isset($account['memberships']))
+						{
+							$account['memberships'] = $this->accounts->memberships($account['account_id']) ?: [];
+						}
+						// primary group might not be set in memberships, but EGroupware requires it to be taken into account
+						if ($primary_grp_name && !in_array($primary_grp_name, $account['memberships']) &&
+							($sql_grp_id = array_search(self::strtolower($primary_grp_name), $groups)))
+						{
+							$account['memberships'][$sql_grp_id] = $primary_grp_name;
+						}
+						foreach ($account['memberships'] as $grp_id => $grp_name)
+						{
+							if (($sql_grp_id = array_search(self::strtolower($grp_name), $groups)) && $sql_grp_id != $grp_id)
+							{
+								unset($account['memberships'][$grp_id]);
+								$account['memberships'][$sql_grp_id] = $grp_name;
+							}
+						}
+					}
 					// do NOT log binary content of image
 					$hide_binary = ['jpegphoto' => $contact['jpegphoto'] ? bytes($contact['jpegphoto']).' bytes binary data' : null];
 					$this->logger(++$num.'. User: '.json_encode($hide_binary + $contact + $account, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE), 'debug');
@@ -373,8 +407,10 @@ class Import
 										if (($GLOBALS['egw_info']['server']['account_repository'] ?? 'sql') === 'sql')
 										{
 											Api\Hooks::process($to_update + array(
-													'location' => 'editaccount'
-												), False, True);    // called for every app now, not only enabled ones)
+												// if there was no email set before, call add account hook, to activate mail-account
+												'location' => empty($sql_account['account_email']) && !empty($to_update['account_email']) ?
+													'addaccount' : 'editaccount',
+											), False, True);    // called for every app now, not only enabled ones)
 										}
 										$this->logger("Successful updated user '$account[account_lid]' (#$account_id): " .
 											json_encode($diff, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'detail');
@@ -423,6 +459,7 @@ class Import
 						// photo and public keys are not stored in SQL but in filesystem, fetch it to compare
 						$contact['files'] = 0;
 						if ($contact['jpegphoto'] === false) $contact['jpegphoto'] = null;
+						Api\Vfs::$is_root = true;
 						foreach($this->files2attrs as $file => [$attr, $mask, $regexp])
 						{
 							if (isset($contact[$attr]))
@@ -439,12 +476,13 @@ class Import
 							}
 							$last_attr = $attr;
 						}
+						Api\Vfs::$is_root = false;
 						$to_update = array_merge($sql_contact, array_filter($contact, static function ($attr) {
 							return $attr !== null && $attr !== '';
 						}));
 						// files need to be or'ed with the sql value, as otherwise e.g. picture would disappear
 						$to_update['files'] |= $sql_contact['files'];
-						unset($to_update['account_id']);    // no need to update, specially as account_id might be different!
+						unset($to_update['account_id'], $to_update['dn']);    // no need to update, specially as account_id might be different!
 						$to_update['id'] = $sql_contact['id'];
 						if (($diff = array_diff_assoc($to_update, $sql_contact)))
 						{
@@ -471,17 +509,19 @@ class Import
 							}
 							Api\Vfs::$is_root = false;
 */
-							// photo_unchanged=true must be set, to no delete the photo, if it's not in LDAP
-							$this->contacts_sql->data['photo_unchanged'] = !isset($diff['files']) ||
-								($to_update['files']&Api\Contacts::FILES_BIT_PHOTO) === ($sql_contact['files']&Api\Contacts::FILES_BIT_PHOTO);
+							// photo_unchanged=true must be set, to not delete the photo, if it's not in LDAP
+							$diff['photo_unchanged'] = $this->contacts_sql->data['photo_unchanged'] =
+								!isset($diff['jpegphoto']) && (!isset($diff['files']) ||
+									($to_update['files']&Api\Contacts::FILES_BIT_PHOTO) === ($sql_contact['files']&Api\Contacts::FILES_BIT_PHOTO));
 							if ($need_update && $this->contacts_sql->save($to_update))
 							{
 								$this->logger("Error updating contact data of '$account[account_lid]' (#$account_id)", 'error');
 								++$errors;
 								continue;
 							}
+							$hide_binary = !empty($diff['jpegphoto']) ? ['jpegphoto' => bytes($diff['jpegphoto']).' bytes binary data'] : [];
 							$this->logger("Successful updated contact data of '$account[account_lid]' (#$account_id): ".
-								json_encode($diff, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE), 'detail');
+								json_encode($hide_binary+$diff, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE), 'detail');
 							if (!$new) $new = false;
 						}
 						else
@@ -492,11 +532,6 @@ class Import
 					// if requested, also set memberships
 					if (in_array('groups', explode('+', $type)) && !$dry_run)
 					{
-						// LDAP backend does not query it automatic
-						if (!isset($account['memberships']))
-						{
-							$account['memberships'] = $this->accounts->memberships($account['account_id']);
-						}
 						// preserve memberships of local groups, if they are allowed
 						$local_memberships = [];
 						if (in_array('local', explode('+', $type)))
@@ -563,6 +598,8 @@ class Import
 				}
 			}
 
+			// ignore / never delete anonymous user, which is required for EGroupware to function properly
+			$sql_users = array_diff($sql_users, ['anonymous']);
 			// do we need to delete (or deactivate) no longer existing users
 			if ($delete !== 'no' && $sql_users)
 			{
@@ -624,7 +661,8 @@ class Import
 			}
 			$this->logger($result, 'info');
 
-			if (!$dry_run && $initial_import && self::installAsyncJob())
+			if (!$dry_run && $initial_import && self::installAsyncJob((float)$GLOBALS['egw_info']['server']['account_import_frequency'] ?? 0.0,
+					$GLOBALS['egw_info']['server']['account_import_time'] ?? null))
 			{
 				$this->logger('Async job for periodic import installed', 'info');
 			}
@@ -787,8 +825,12 @@ class Import
 			$groups[$sql_id] = self::strtolower($group['account_lid']);
 
 			// we need to record and return the id's to update members, AFTER users are created/updated
-			// only for incremental run, initial run set's memberships with the user anyway (more efficient for LDAP!)
-			if (!empty($modified))
+			if (is_a($this->accounts, Ads::class))
+			{
+				// ADS::members() calls the frontend, have to use ADS::getMembers() instead
+				$set_members[$sql_id] = $this->accounts->getMembers($group);
+			}
+			else
 			{
 				$set_members[$sql_id] = $this->accounts->members($group['account_id']);
 			}
@@ -937,7 +979,9 @@ class Import
 	const LOG_FILE = 'setup/account-import.log';
 
 	/**
-	 * Run incremental import via async job
+	 * Run import via async job
+	 *
+	 * First daily run is a full import, if deleting or deactivating accounts is configured, all others are incremental imports
 	 *
 	 * @return void
 	 */
@@ -946,7 +990,8 @@ class Import
 		try {
 			$import = new self();
 			$import->logger(date('Y-m-d H:i:s O').' LDAP account import started', 'info');
-			$import->run(false);
+			$import->run(in_array($GLOBALS['egw_info']['server']['account_import_delete'] ?? 'no', ['yes', 'deactivate']) &&
+				self::firstRunToday());
 			$import->logger(date('Y-m-d H:i:s O').' LDAP account import finished', 'info');
 		}
 		catch (\InvalidArgumentException $e) {
@@ -959,6 +1004,21 @@ class Import
 			_egw_log_exception($e);
 			$import->logger('Error: '.$e->getMessage(), 'fatal');
 		}
+	}
+
+	/**
+	 * Check if current time / run is the first one for today
+	 *
+	 * @return bool
+	 */
+	public static function firstRunToday()
+	{
+		if (empty($frequency=$GLOBALS['egw_info']['server']['account_import_frequency']))
+		{
+			return false;
+		}
+		// check current time <= time of first run today (frequency is in hours)
+		return time() <= mktime(floor($frequency), round((60*$frequency)%60), 60);   // 60 seconds grace time
 	}
 
 	/**

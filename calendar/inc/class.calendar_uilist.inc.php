@@ -439,7 +439,8 @@ class calendar_uilist extends calendar_ui
 		if($params['view'] && $params['view'] == 'listview' && Api\Json\Response::isJSONResponse())
 		{
 			Api\Json\Response::get()->call('app.calendar.set_app_header',
-				(count($search_params['users']) == 1 ? $this->bo->participant_name($search_params['users'][0]).': ' : '') .
+				(!empty($search_params['users']) && count($search_params['users']) === 1 ?
+					$this->bo->participant_name($search_params['users'][0]).': ' : '') .
 				$label);
 		}
 		foreach((array) $this->bo->search($search_params, !empty($col_filter) ? $col_filter : null) as $event)
@@ -455,7 +456,7 @@ class calendar_uilist extends calendar_ui
 			}
 
 			$matches = null;
-			if(!(int)$event['id'] && preg_match('/^([a-z_-]+)([0-9]+)$/i',$event['id'],$matches))
+			if(!(int)$event['id'] && preg_match('/^([a-z_-]+)([0-9]+)([:-].+)?$/i', $event['id'], $matches))
 			{
 				$app = $matches[1];
 				$app_id = $matches[2];
@@ -473,14 +474,14 @@ class calendar_uilist extends calendar_ui
 			else
 			{
 				$is_private = !$this->bo->check_perms(Acl::READ,$event);
+				$event['app'] = 'calendar';
+				$event['app_id'] = $event['id'];
 			}
 			if ($is_private)
 			{
 				$event['class'] .= 'rowNoView ';
 			}
 
-			$event['app'] = 'calendar';
-			$event['app_id'] = $event['id'];
 
 			// Edit link
 			if($app && $app_id)

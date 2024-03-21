@@ -20,6 +20,10 @@ import {egwAction, egwActionObject} from '../../api/js/egw_action/egw_action';
 import {LitElement} from "@lion/core";
 import {et2_nextmatch} from "../../api/js/etemplate/et2_extension_nextmatch";
 import {et2_DOMWidget} from "../../api/js/etemplate/et2_core_DOMWidget";
+import {Et2SelectAccount} from "../../api/js/etemplate/Et2Select/Select/Et2SelectAccount";
+import {EgwAction} from "../../api/js/egw_action/EgwAction";
+import {EgwActionObject} from "../../api/js/egw_action/EgwActionObject";
+import type {Et2Button} from "../../api/js/etemplate/Et2Button/Et2Button";
 
 /**
  * UI for Admin
@@ -550,6 +554,61 @@ class AdminApp extends EgwApp
 	}
 
 	/**
+	 * Opens a dialog to add / remove application run rights for one or more groups
+	 *
+	 * @param _action
+	 * @param _senders
+	 */
+	group_run_rights(_action : EgwAction, _senders : EgwActionObject[])
+	{
+		let ids = [];
+		let row_ids = []
+		_senders.forEach((sender) => {
+			row_ids.push(sender.id);
+			ids.push(sender.id.split("::").pop());
+		})
+		const dialog = new Et2Dialog(this.egw);
+		let attrs = {
+			template: this.egw.webserverUrl + "/admin/templates/default/group.run_rights.xet",
+			title: "Applications",
+			hideOnEscape: true,
+			width: "400",
+			height: "300px",
+			value: {
+				content: {groups: ids}
+			},
+			callback: (button_id, value) => {
+				if(button_id == "_cancel") return;
+
+				let acl_id = [];
+				(value.apps ?? []).forEach(app => {
+					ids.forEach(account => {
+						acl_id.push(app + ":" + account +":run");
+					})
+				});
+				if(value && value.apps && acl_id.length)
+				{
+					const button = <Et2Button>dialog.querySelector("[id*='"+button_id+"']");
+					if(button) button.disabled=true;
+					this.egw.request(
+						'admin_acl::ajax_change_acl',
+						[acl_id, button_id == "_add" ? 1 : 0, [], this.et2.getInstanceManager().etemplate_exec_id]
+					).then((_data) => {
+						this.et2.getInstanceManager().refresh(_data.msg, this.appname,row_ids,'update');
+						dialog.close();
+					});
+					return false;
+				}
+			}
+		}
+		dialog.transformAttributes(attrs);
+		this.et2.getInstanceManager().DOMContainer.appendChild(dialog);
+		dialog.updateComplete.then(() => {
+			dialog.template.widgetContainer.getWidgetById("apps").focus();
+		});
+	}
+
+	/**
 	 * Modify an ACL entry
 	 *
 	 * @param {object} _action egwAction
@@ -710,8 +769,7 @@ class AdminApp extends EgwApp
 				sel_options.acl_appname = [];
 				for(let app in acl_rights)
 				{
-					sel_options.acl_appname.push({value: app, label: this.egw.lang(
-						<string>this.egw.link_get_registry(app, 'entries') || app)});
+					sel_options.acl_appname.push({value: app, label: app});
 				}
 				// Sort list
 				sel_options.acl_appname.sort(function(a,b) {
@@ -1365,6 +1423,28 @@ class AdminApp extends EgwApp
 	{
 		var use_default = this.et2.getWidgetById('notify_use_default');
 		if (use_default) use_default.set_value(false);
+	}
+
+	/**
+	 * onchange callback for mail account account_id (valid for)
+	 *
+	 * @param {object} _event
+	 * @param {et2_widget} _widget
+	 */
+	warnMailAccountForAllChanged(_event : Event, _widget : Et2SelectAccount)
+	{
+		const account_id = _widget.value;
+		const old_account_id = this.et2.getArrayMgr('content').getEntry('account_id');
+
+		// this is (no longer) an account for all
+		if ((Array.isArray(account_id) ? account_id.length : account_id) &&
+			// but this was an account for all
+			!(Array.isArray(old_account_id) ? old_account_id.length : old_account_id))
+		{
+			_widget.blur();
+			Et2Dialog.alert(this.egw.lang('By selecting a user or group you effectively delete the mail account for all other users!\n\nAre you really sure you want to do that?'),
+				this.egw.lang('This is a mail account for ALL users!'), Et2Dialog.WARNING_MESSAGE);
+		}
 	}
 
 	/**

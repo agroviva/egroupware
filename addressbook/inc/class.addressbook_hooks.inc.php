@@ -163,7 +163,12 @@ class addressbook_hooks
 			'default'=> '0'
 		);
 		$settings['hide_groups_as_lists'] = array(
-			'type'   => 'check',
+			'type'   => 'select',
+			'values' => [
+				'0' => lang('Include all groups'),
+				'1' => lang('Hide all groups'),
+				'2' => lang('Hide groups without email address'),
+			],
 			'label'  => 'Hide user groups as distribution lists',
 			'name'   => 'hide_groups_as_lists',
 			'help'   => 'User groups are automatically shown as distribution lists.',
@@ -399,7 +404,7 @@ class addressbook_hooks
 	{
 		// Add users / groups this contact is shared with
 		$entry['shared_with'] = [];
-		foreach((array)$entry['shared'] as $id => $share)
+		foreach($entry['shared'] ?? [] as $share)
 		{
 			$entry['shared_with'][] = $share['shared_with'];
 		}
@@ -412,7 +417,7 @@ class addressbook_hooks
 	/**
 	 * Hook called to retrieve a app specific exportLimit
 	 *
-	 * @param array/string $location location and other parameters (not used)
+	 * @param array|string $location location and other parameters (not used)
 	 * @return the export_limit to be applied for the app, may be empty, int or string
 	 */
 	static function getAppExportLimit($location)

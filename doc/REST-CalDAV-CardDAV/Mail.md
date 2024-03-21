@@ -5,7 +5,8 @@ Authentication is via Basic Auth with username and a password, or a token valid 
 - CalDAV/CardDAV Sync (REST API)
 - E-Mail application
 
-> Currently only implemented is sending mail or launching interactive compose windows.
+> Currently only implemented is sending mail, launching interactive compose windows, 
+> viewing EML files or setting the vacation notice.
 
 Implemented requests (relative to https://example.org/egroupware/groupdav.php)
 
@@ -40,6 +41,7 @@ The content of the POST request is a JSON encoded object with following attribut
 - ```subject```: string with subject
 - ```body```: string plain text body (optional)
 - ```bodyHtml```: string with html body (optional)
+- ```replyEml```: string returned from uploaded eml file to reply to (optional)
 - ```attachments```: array of strings returned from uploaded attachments (see below) or VFS path ```["/mail/attachments/<token>", "/home/<user>/<filename>", ...]```
 - ```attachmentType```: one of the following strings (optional, default "attach")
   - "attach" send as attachment
@@ -124,15 +126,42 @@ to use in further requests, instead of the attachment.
 ```
 curl -i https://example.org/egroupware/groupdav.php/mail/attachments/<filename> --user <user> \
     --data-binary @<file> -H 'Content-Type: <content-type-of-file>'
-HTTP/1.1 302 Found
-Location: https://example.org/egroupware/groupdav.php/mail/attachment/<token>
+HTTP/1.1 201 Created
+Location: https://example.org/egroupware/groupdav.php/mail/attachments/<token>
+
+{
+    "status": 201,
+    "message": "Attachment stored",
+    "location": "/mail/attachments/<token>"
+}
+```
+> When using curl to upload attachments it's important to use ```--data-binary```, just ```-d``` or ```--data``` is NOT sufficient!
+
+> Use a `X-No-Location: true` header to get NO `Location: <url>` header with HTTP status `201 Created` back, but a simple `200 Ok`!
+</details>
+
+- ```POST /mail[/<id>]/view``` view an eml file
+<details>
+  <summary>Example: Uploading an eml file to be viewed</summary>
+
+The content of the POST request is the eml-file. 
+It gets imported to the Drafts folder of the selected or default mail account, 
+and is then viewed from there.
+
+The user has the ability to answer or forward the message, or download attachments.
+
+```
+curl -i https://example.org/egroupware/groupdav.php/mail/view --user <user> \
+    --data-binary @<eml-file> -H 'Content-Type: message/rfc822'
+HTTP/1.1 200 Ok
 
 {
     "status": 200,
-    "message": "Attachment stored",
-    "location": "/mail/attachments/<filename>--xM35lY"
+    "message": "Request to open view window sent",
 }
 ```
+> You get a `404 Not Found`, if the user is NOT online, like in compose.
+
 > When using curl to upload attachments it's important to use ```--data-binary```, just ```-d``` or ```--data``` is NOT sufficient!
 </details>
 

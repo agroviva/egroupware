@@ -110,9 +110,9 @@ class StreamWrapper extends Api\Db\Pdo implements Vfs\StreamWrapperIface
 	 */
 	protected $opened_path;
 	/**
-	 * Mode of the file opened by stream_open
+	 * Mode of the file opened by stream_open: "r", "r+", "w", ...
 	 *
-	 * @var int
+	 * @var string
 	 */
 	protected $opened_mode;
 	/**
@@ -607,7 +607,7 @@ class StreamWrapper extends Api\Db\Pdo implements Vfs\StreamWrapperIface
 			$stmt = self::$pdo->prepare('DELETE FROM '.self::PROPS_TABLE.' WHERE fs_id=?');
 			$stmt->execute(array($stat['ino']));
 
-			if ($stat['mime'] !== self::SYMLINK_MIME_TYPE)
+			if($stat['mime'] !== self::SYMLINK_MIME_TYPE && is_array($parent_stat))
 			{
 				$this->adjustDirSize($parent_stat['ino'], -$stat['size']);
 			}
@@ -1215,7 +1215,7 @@ class StreamWrapper extends Api\Db\Pdo implements Vfs\StreamWrapperIface
 		static $max_subquery_depth=null;
 		if (is_null($max_subquery_depth))
 		{
-			$max_subquery_depth = $GLOBALS['egw_info']['server']['max_subquery_depth'];
+			$max_subquery_depth = $GLOBALS['egw_info']['server']['max_subquery_depth'] ?? null;
 			if (!$max_subquery_depth) $max_subquery_depth = 7;	// setting current default of 7, if nothing set
 		}
 		if (self::LOG_LEVEL > 1) error_log(__METHOD__."('$url',$flags)");
@@ -1673,6 +1673,7 @@ GROUP BY A.fs_id';
 		{
 			$query = '/* '.__METHOD__.': '.__LINE__.' */ '.$query;
 		}
+		self::connection();
 		$stmt = self::$pdo->prepare($query);
 
 		$stmt->execute(array($fs_id));

@@ -69,9 +69,13 @@ class ApiHandler extends Api\CalDAV\Handler
 			{
 				return self::updateVacation($user, $options['content'], $matches[2]);
 			}
+			elseif (preg_match('#^/mail(/(\d+))?/view/?$#', $path, $matches))
+			{
+				return self::viewEml($user, $options['stream'] ?? $options['content'], $matches[2]);
+			}
 			elseif (preg_match('#^/mail(/(\d+))?(/compose)?#', $path, $matches))
 			{
-				$ident_id = $matches[2] ?? self::defaultIdentity($user);
+				$ident_id = $matches[2] ?? null ?: self::defaultIdentity($user);
 				$do_compose = (bool)($matches[3] ?? false);
 				if (!($data = json_decode($options['content'], true)))
 				{
@@ -79,9 +83,45 @@ class ApiHandler extends Api\CalDAV\Handler
 				}
 				// ToDo: check required attributes
 
-				$preset = array_filter(array_intersect_key($data, array_flip(['to', 'cc', 'bcc', 'replyto', 'subject', 'priority']))+[
-					'body' => $data['bodyHtml'] ?? null ?: $data['body'] ?? '',
-					'mimeType' => !empty($data['bodyHtml']) ? 'html' : 'plain',
+				$params = [];
+
+				// should we reply to an eml file
+				if (!empty($data['replyEml']))
+				{
+					if (preg_match('#^/mail/attachments/(([^/]+)--[^/.-]{6,})$#', $data['replyEml'], $matches) &&
+						file_exists($eml=$GLOBALS['egw_info']['server']['temp_dir'].'/attach--'.$matches[1]))
+					{
+						// import mail into drafts folder
+						$acc_id = Api\Mail\Account::read_identity($ident_id)['acc_id'];
+						$mail = Api\Mail::getInstance(false, $acc_id);
+						$folder = $mail->getDraftFolder();
+						$mailer = new Api\Mailer();
+						$mail->parseFileIntoMailObject($mailer, $eml);
+						$mail->openConnection();
+						$uid = $mail->appendMessage($folder, $mailer->getRaw(), null, '\\Seen');
+						// and generate row-id from it to pass as reply_id to compose
+						$params['reply_id'] = \mail_ui::generateRowID($acc_id, $folder, $uid, true);
+						$params['from'] = 'reply';
+					}
+					else
+					{
+						throw new \Exception("Reply message eml '{$data['reply_eml']}' NOT found", 400);
+					}
+				}
+
+				// determine to use html or plain-text based on user preference and what's supplied in REST API call
+				$type = $GLOBALS['egw_info']['user']['preferences']['mail']['composeOptions'] === 'html' ||
+					!empty($data['bodyHtml']) ? 'html' : 'plain';
+				$body = $data['bodyHtml'] ?? null ?: $data['body'] ?? '';
+				// if user wants html, but REST API caller supplied plain --> convert to html
+				if (!empty($body) && empty($data['bodyHtml']))
+				{
+					$body = Api\Mail\Html::convertTextToHtml($body);
+				}
+
+				$preset = array_filter(array_intersect_key($data, array_flip(['to', 'cc', 'bcc', 'replyto', 'subject', 'priority', 'reply_id']))+[
+					'body' => $body,
+					'mimeType' => $type,
 					'identity' => $ident_id,
 				]+self::prepareAttachments($data['attachments'] ?? [], $data['attachmentType'] ?? 'attach',
 					$data['shareExpiration'], $data['sharePassword'], $do_compose));
@@ -95,7 +135,7 @@ class ApiHandler extends Api\CalDAV\Handler
 						throw new \Exception("User '$account_lid' (#$user) is NOT online", 404);
 					}
 					$push = new Api\Json\Push($user);
-					$push->call('egw.open', '', 'mail', 'add', ['preset' => $preset], '_blank', 'mail');
+					$push->call('egw.open', '', 'mail', 'add', $params+['preset' => $preset], '_blank', 'mail');
 					echo json_encode([
 						'status' => 200,
 						'message' => 'Request to open compose window sent',
@@ -103,7 +143,7 @@ class ApiHandler extends Api\CalDAV\Handler
 					], self::JSON_RESPONSE_OPTIONS);
 					return true;
 				}
-				$acc_id = Api\Mail\Account::read_identity($ident_id)['acc_id'];
+				$acc_id = $acc_id ?? Api\Mail\Account::read_identity($ident_id)['acc_id'];
 				$mail_account = Api\Mail\Account::read($acc_id);
 				// check if the mail-account requires a user-context / password and then just send the mail with an smtp-only account NOT saving to Sent folder
 				if (empty($mail_account->acc_imap_password) || $mail_account->acc_smtp_auth_session && empty($mail_account->acc_smtp_password))
@@ -283,15 +323,76 @@ class ApiHandler extends Api\CalDAV\Handler
 			file_put_contents($attachment_path, $content))
 		{
 			if (isset($fp)) fclose($fp);
-			header('Location: '.($location = '/mail/attachments/'.substr(basename($attachment_path), 8)));
+			$location = '/mail/attachments/'.substr(basename($attachment_path), 8);
+			// allow to suppress location header with an "X-No-Location: true" header
+			if (($location_header = empty($_SERVER['HTTP_X_NO_LOCATION'])))
+			{
+				header('Location: '.Api\Framework::getUrl(Api\Framework::link('/groupdav.php'.$location)));
+			}
+			$ret = $location_header ? '201 Created' : '200 Ok';
 			echo json_encode([
-				'status'   => 200,
+				'status'   => (int)$ret,
 				'message'  => 'Attachment stored',
 				'location' => $location,
 			], self::JSON_RESPONSE_OPTIONS);
-			return '200 Ok';
+			return $ret;
 		}
 		throw new \Exception('Error storing attachment');
+	}
+
+	/**
+	 * View posted eml file
+	 *
+	 * @param int $user
+	 * @param string|stream $content
+	 * @param ?int $acc_id mail account to import in Drafts folder
+	 * @return string HTTP status
+	 * @throws \Exception on error
+	 */
+	protected static function viewEml(int $user, $content, int $acc_id=null)
+	{
+		if (empty($acc_id))
+		{
+			$acc_id = self::defaultIdentity($user);
+		}
+
+		// check and bail, if user is not online
+		if (!Api\Json\Push::isOnline($user))
+		{
+			$account_lid = Api\Accounts::id2name($user);
+			throw new \Exception("User '$account_lid' (#$user) is NOT online", 404);
+		}
+
+		// save posted eml to a temp-dir
+		$eml = tempnam($GLOBALS['egw_info']['server']['temp_dir'], 'view-eml-');
+		if (!(is_resource($content) ?
+			stream_copy_to_stream($content, $fp = fopen($eml, 'w')) :
+			file_put_contents($eml, $content)))
+		{
+			throw new \Exception('Error storing attachment');
+		}
+		if (isset($fp)) fclose($fp);
+
+		// import mail into drafts folder
+		$mail = Api\Mail::getInstance(false, $acc_id);
+		$folder = $mail->getDraftFolder();
+		$mailer = new Api\Mailer();
+		$mail->parseFileIntoMailObject($mailer, $eml);
+		$mail->openConnection();
+		$message_uid = $mail->appendMessage($folder, $mailer->getRaw(), null, '\\Seen');
+
+		// tell browser to view eml from drafts folder
+		$push = new Api\Json\Push($user);
+		$push->call('egw.open', \mail_ui::generateRowID($acc_id, $folder, $message_uid, true),
+			'mail', 'view', ['mode' => 'display'], '_blank', 'mail');
+
+		// respond with success message
+		echo json_encode([
+			'status' => 200,
+			'message' => 'Request to open view window sent',
+		], self::JSON_RESPONSE_OPTIONS);
+
+		return true;
 	}
 
 	/**
@@ -422,7 +523,7 @@ class ApiHandler extends Api\CalDAV\Handler
 				{
 					$files['files'][] = [
 						'path' => $path.$ident_id,
-						'props' => ['name' => ['val' => $identity]],
+						'props' => ['data' => ['val' => $identity]],
 					];
 				}
 			}
@@ -469,6 +570,15 @@ class ApiHandler extends Api\CalDAV\Handler
 					$account = self::getMailAccount($user, $matches[2] ?? null);
 					echo json_encode(self::returnVacation(self::getVacation($account->imapServer(), $user)), self::JSON_RESPONSE_OPTIONS);
 					return true;
+
+				case preg_match('#^/mail/attachments/(([^/]+)--[^/.-]{6,})$#', $path, $matches) === 1:
+					if (!file_exists($tmp=$GLOBALS['egw_info']['server']['temp_dir'].'/attach--'.$matches[1]))
+					{
+						throw new \Exception("Attachment $path NOT found", 404);
+					}
+					Api\Header\Content::type($matches[2], '', filesize($tmp));
+					readfile($tmp);
+					exit;
 			}
 		}
 		catch (\Throwable $e) {

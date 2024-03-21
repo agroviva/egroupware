@@ -1,9 +1,11 @@
-import {SlMenu} from "@shoelace-style/shoelace";
 import {Et2WidgetWithSelectMixin} from "./Et2WidgetWithSelectMixin";
 import {RowLimitedMixin} from "../Layout/RowLimitedMixin";
 import shoelace from "../Styles/shoelace";
-import {css, html, TemplateResult} from "@lion/core";
+import {css, html, LitElement, TemplateResult} from "lit";
 import {SelectOption} from "./FindSelectOptions";
+import {repeat} from "lit/directives/repeat.js";
+import {property} from "lit/decorators/property.js";
+import {SlMenuItem} from "@shoelace-style/shoelace";
 
 /**
  * A selectbox that shows more than one row at a time
@@ -12,7 +14,7 @@ import {SelectOption} from "./FindSelectOptions";
  *
  * Use Et2Selectbox in most cases, it's better.
  */
-export class Et2Listbox extends RowLimitedMixin(Et2WidgetWithSelectMixin(SlMenu))
+export class Et2Listbox extends RowLimitedMixin(Et2WidgetWithSelectMixin(LitElement))
 {
 
 	static get styles()
@@ -40,14 +42,15 @@ export class Et2Listbox extends RowLimitedMixin(Et2WidgetWithSelectMixin(SlMenu)
 				overflow-x: clip;
 			}
 			/* Ellipsis when too small */
-			sl-menu-item.menu-item__label {
+
+			  sl-option.option__label {
 				display: block;
     			text-overflow: ellipsis;
     			/* This is usually not used due to flex, but is the basis for ellipsis calculation */
     			width: 10ex;
 			}
-			
-			:host([rows])::part(base) {
+
+			  :host([rows]) .menu {
 				height: calc(var(--rows, 5) * 1.9rem);
 				overflow-y: auto;
 			}
@@ -55,19 +58,7 @@ export class Et2Listbox extends RowLimitedMixin(Et2WidgetWithSelectMixin(SlMenu)
 		];
 	}
 
-	static get properties()
-	{
-		return {
-			...super.properties,
-			/**
-			 * Toggle between single and multiple selection
-			 */
-			multiple: {
-				type: Boolean,
-				reflect: true,
-			}
-		}
-	}
+	@property({type: Boolean, reflect: true}) multiple = false;
 
 	private __value : String[] | null;
 
@@ -87,6 +78,11 @@ export class Et2Listbox extends RowLimitedMixin(Et2WidgetWithSelectMixin(SlMenu)
 		{
 			this.addEventListener("sl-change", this._triggerChange);
 		});
+	}
+
+	private getAllItems() : SlMenuItem[]
+	{
+		return <SlMenuItem[]>Array.from(this.shadowRoot?.querySelectorAll('sl-menu-item')) ?? [];
 	}
 
 	/**
@@ -117,15 +113,12 @@ export class Et2Listbox extends RowLimitedMixin(Et2WidgetWithSelectMixin(SlMenu)
 		this.dispatchEvent(new Event("change"));
 	}
 
+	@property()
 	get value()
 	{
-		let value = [];
-		if(this.defaultSlot)
-		{
-			value = this.getAllItems()
+		let value = this.hasUpdated ? this.getAllItems()
 				.filter((item) => item.checked)
-				.map((item) => item.value);
-		}
+			.map((item) => item.value) : this.__value ?? []
 		return this.multiple ? value : value.pop();
 	}
 
@@ -157,11 +150,21 @@ export class Et2Listbox extends RowLimitedMixin(Et2WidgetWithSelectMixin(SlMenu)
                     value="${option.value}"
                     title="${!option.title || this.noLang ? option.title : this.egw().lang(option.title)}"
                     class="${option.class}" .option=${option}
+                    type="checkbox"
                     ?checked=${checked}
             >
                 ${icon}
                 ${this.noLang ? option.label : this.egw().lang(option.label)}
             </sl-menu-item>`;
+	}
+
+	render()
+	{
+		return html`
+            <sl-menu class="menu">
+                ${repeat(this.select_options, (o) => o.value, (option : SelectOption) => this._optionTemplate(option))}
+            </sl-menu>
+		`
 	}
 }
 

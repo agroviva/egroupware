@@ -22,14 +22,14 @@ use EGroupware\Api\Exception\AssertionFailed;
 /**
  * API - accounts
  *
- * This class uses a backend class (at them moment SQL or LDAP) and implements some
- * caching on to top of the backend functions:
+ * This class uses a backend class and implements some caching on to top of the backend functions:
  *
  * a) instance-wide account-data cache queried by account_id including also members(hips)
  *    implemented by self::cache_read($account_id) and self::cache_invalidate($account_ids)
  *
  * b) session based cache for search, split_accounts and name2id
  *    implemented by self::setup_cache() and self::cache_invalidate()
+ *    SQL backend does NOT use the session, but just a static variable so caching on request base.
  *
  * The backend only implements the read, save, delete, name2id and the {set_}members{hips} methods.
  * The account class implements all other (eg. name2id, id2name) functions on top of these.
@@ -39,7 +39,7 @@ use EGroupware\Api\Exception\AssertionFailed;
 class Accounts
 {
 	/**
-	 * Enables the session-cache, currently switched on independent of the backend
+	 * Enables the session-cache, currently __construct switches it off for SQL backend
 	 *
 	 * @var boolean
 	 */
@@ -67,11 +67,11 @@ class Accounts
 	 * @var array
 	 */
 	static public $config_vars = array(
-		'account_repository', 'auth_type',	// auth_type if fallback if account_repository is not set
+		'account_repository', 'auth_type', 'auth_fallback',	// auth_type is fallback, if account_repository is not set
 		'install_id',	// instance-specific caching
-		'auto_create_expire', 'default_group_lid',	// auto-creation of accounts
-		'ldap_host','ldap_root_dn','ldap_root_pw','ldap_context','ldap_group_context','ldap_search_filter',	// ldap backend
-		'ads_domain', 'ads_host', 'ads_admin_user', 'ads_admin_passwd', 'ads_connection', 'ads_context',	// ads backend
+		'auto_create_acct', 'auto_create_expire', 'default_group_lid',	// auto-creation of accounts
+		'ldap_host','ldap_root_dn','ldap_root_pw','ldap_context','ldap_group_context','ldap_search_filter','ldap_group_filter',	// ldap backend
+		'ads_domain', 'ads_host', 'ads_admin_user', 'ads_admin_passwd', 'ads_connection', 'ads_context', 'ads_user_filter', 'ads_group_filter',	// ads backend
 	);
 
 	/**
@@ -168,6 +168,9 @@ class Accounts
 			$backend = $this->config['account_repository'];
 		}
 		$backend_class = 'EGroupware\\Api\\Accounts\\'.ucfirst($backend);
+
+		// switch session cache off for SQL
+		self::$use_session_cache = $backend !== 'sql';
 
 		if ($backend_object && !is_a($backend_object, $backend_class))
 		{
@@ -394,11 +397,13 @@ class Accounts
 			case 'firstname':
 			case 'firstall':
 			case 'firstgroup':
+			case 'firstemail':
 				$order = 'account_firstname,account_lastname';
 				break;
 			case 'lastname':
 			case 'lastall':
 			case 'firstgroup':
+			case 'lastemail':
 				$order = 'account_lastname,account_firstname';
 				break;
 			default:
@@ -607,6 +612,14 @@ class Accounts
 			case 'lastgroup':
 				$group = Accounts::id2name($lid, 'account_primary_group');
 				$name = $lastname . $delimiter . $firstname . ($is_group ? '' : ' ('.Accounts::id2name($group).')');
+				break;
+			case 'firstemail':
+				$email = Accounts::id2name($lid, 'account_email');
+				$name = $firstname . ' ' . $lastname . ($email ? ' [' . $email . ']' : '');
+				break;
+			case 'lastemail':
+				$email = Accounts::id2name($lid, 'account_email');
+				$name = $lastname . $delimiter . $firstname . ($email ? ' [' . $email . ']' : '');
 				break;
 			case 'firstinital':
 				$name = $firstname.' '.mb_substr($lastname, 0, 1).'.';

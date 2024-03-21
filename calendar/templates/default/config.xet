@@ -11,7 +11,7 @@
 				<row>
 					<et2-vbox>
 						<et2-description  value="Custom URL for iCal with holidays for all users" label="%s:"></et2-description>
-						<et2-description  label="(Without a custom URL we use nation of user preference to load holidays from %s)" href="https://www.mozilla.org/en-US/projects/calendar/holidays/" value="Mozilla Holiday Calendars" extraLinkTarget="_blank"></et2-description>
+						<et2-description  label="(Without a custom URL we use nation of user preference to load holidays from %s)" href="https://www.thuderbird.net/en-US/calendar/holidays/" value="Mozilla Holiday Calendars" extraLinkTarget="_blank"></et2-description>
 					</et2-vbox>
 					<et2-url  id="newsettings[ical_holiday_url]"></et2-url>
 				</row>
@@ -47,6 +47,16 @@
 						<option value="">Yes</option>
 						<option value="true">No</option>
 					</et2-select>
+				</row>
+				<row>
+					<et2-description value="Allow party crashers with email that match the following regular expression" label="%s:"></et2-description>
+					<et2-textbox id="newsettings[caldav_party_crasher_regexp]" placeholder="/^(someone@else.com|.*@(example.org|other.net))$/i"></et2-textbox>
+				</row>
+				<row>
+					<et2-vbox span="all">
+						<et2-description value="A party crasher in someone who is NOT invited to the meeting but somehow got the invitation."/>
+						<et2-description value="By default (nothing is set here) EGroupware allows only the organizer/owner to add them."/>
+					</et2-vbox>
 				</row>
 				<row>
 					<et2-description  value="Security" span="all" class="subHeader"></et2-description>

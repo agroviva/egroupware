@@ -10,7 +10,7 @@
  */
 
 import {Et2DropdownButton} from "../Et2DropdownButton/Et2DropdownButton";
-import {css, html, PropertyValues, TemplateResult} from "@lion/core";
+import {css, html, PropertyValues, TemplateResult} from "lit";
 import {SelectOption} from "../Et2Select/FindSelectOptions";
 import {et2_INextmatchHeader, et2_nextmatch} from "../et2_extension_nextmatch";
 import {Et2Image} from "../Et2Image/Et2Image";
@@ -56,16 +56,9 @@ export class Et2Favorites extends Et2DropdownButton implements et2_INextmatchHea
 			  }
 
 			  et2-image {
-				${egwIsMobile() ?
-				  css`
-					width: 6ex;
-					margin-top: 1.2ex;
-				  ` :
-				  css`
-					width: 20px;
-					margin-top: 4px;
-				  `
-				}
+				display: flex;
+				height: 100%;
+				width: ${egwIsMobile() ? css`4ex` : css`2ex`}
 			  }
 
 			  et2-image[src="trash"] {
@@ -76,24 +69,24 @@ export class Et2Favorites extends Et2DropdownButton implements et2_INextmatchHea
 				min-width: 15em;
 			  }
 
-			  sl-menu-item:hover et2-image[src="trash"] {
+				sl-menu-item:hover et2-image[src="trash"] {
 				display: initial;
 			  }
 
 			  /* Add star icons - radio button is already in prefix */
 
-			  sl-menu-item::part(base) {
+				sl-menu-item::part(base) {
 				background-image: ${cssImage("fav_filter")};
 				background-repeat: no-repeat;
 				background-size: 16px 16px;
 				background-position: 5px center;
 			  }
 
-			  sl-menu-item[checked]::part(base) {
+				sl-menu-item[checked]::part(base) {
 				background-image: ${cssImage("favorites")};
 			  }
 
-			  sl-menu-item:last-child::part(base) {
+				sl-menu-item:last-child::part(base) {
 				background-image: none;
 			  }
 			`,
@@ -180,12 +173,12 @@ export class Et2Favorites extends Et2DropdownButton implements et2_INextmatchHea
 		//@ts-ignore TS doesn't know about window.app
 		let is_admin = (typeof this.egw().app('admin') != "undefined");
 		//@ts-ignore option.group does not exist
-		let icon = (option.group !== false && !is_admin || option.value == 'blank') ? "" : html`
+		let icon = (option.group !== false && !is_admin || ['blank', '~add~'].includes(option.value)) ? "" : html`
             <et2-image slot="suffix" src=${"trash"} icon @click=${this._handleDelete}
                        statustext="${this.egw().lang("Delete")}"></et2-image>`;
 
 		return html`
-            <sl-menu-item value="${option.value}" ?checked="${option.value == this._preferred}">
+            <sl-menu-item value="${option.value}">
                 ${option.value !== Et2Favorites.ADD_VALUE ? radio : ""}
                 ${icon}
                 ${option.label}
@@ -360,6 +353,17 @@ export class Et2Favorites extends Et2DropdownButton implements et2_INextmatchHea
 	}
 
 	/**
+	 * Handle the click from the main button
+	 *
+	 * @param {MouseEvent} event
+	 * @protected
+	 */
+	protected _handleClick(event : MouseEvent)
+	{
+		this._apply_favorite(this.preferred);
+	}
+
+	/**
 	 * Clicked a radio button
 	 *
 	 * @param _ev
@@ -435,24 +439,6 @@ export class Et2Favorites extends Et2DropdownButton implements et2_INextmatchHea
 		Et2Dialog.show_dialog(do_delete, (this.egw().lang("Delete") + " " + fav.name + "?"),
 			"Delete", null, Et2Dialog.BUTTONS_YES_NO, Et2Dialog.QUESTION_MESSAGE);
 
-		return false;
-	}
-
-	/**
-	 * Clicked the main button
-	 *
-	 * @param {MouseEvent} _ev
-	 * @returns {boolean}
-	 * @protected
-	 */
-	_handleClick(_ev : MouseEvent) : boolean
-	{
-		// Apply preferred filter - make sure it's an object, and not a reference
-		if(this._preferred && this.favoriteByID(this._preferred))
-		{
-			this._apply_favorite(this._preferred);
-		}
-		_ev.stopImmediatePropagation();
 		return false;
 	}
 

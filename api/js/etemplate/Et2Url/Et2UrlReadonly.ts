@@ -9,7 +9,7 @@
 
 /* eslint-disable import/no-extraneous-dependencies */
 import {Et2Description} from "../Et2Description/Et2Description";
-import {css, TemplateResult} from "@lion/core";
+import {css, TemplateResult} from "lit";
 import {Et2Url} from "./Et2Url";
 
 /**
@@ -30,6 +30,9 @@ export class Et2UrlReadonly extends Et2Description
 			}`
 		];
 	}
+
+	// Don't try to translate URLs (or sub-classes)
+	noLang = true;
 
 	transformAttributes(attrs)
 	{

@@ -121,6 +121,7 @@ class mail_sieve
 			$content['msg'] = lang('error').':'.lang('Serverside Filterrules (Sieve) are not activated').'. '.lang('Please contact your Administrator to validate if your Server supports Serverside Filterrules, and how to enable them in EGroupware for your active Account (%1) with ID:%2.',$this->currentIdentity,$this->account->acc_id);
 			$content['hideIfSieveDisabled']='mail_DisplayNone';
 		}
+		Api\Framework::bodyClass('scrollVertical');
 		$tmpl->exec('mail.mail_sieve.index',$content,$sel_options,array());
 	}
 
@@ -563,7 +564,7 @@ class mail_sieve
 			}
 			else
 			{
-				if ($icServer->acc_imap_administration || (!empty($icServer->getExtensions()) && in_array('DATE', $icServer->getExtensions())))
+				if (!empty($icServer->getExtensions()) && in_array('DATE', $icServer->getExtensions()))
 				{
 					$ByDate = array('by_date' => lang('By date'));
 				}
@@ -581,7 +582,7 @@ class mail_sieve
 					}
 					else
 					{
-						$content['forwards'] = '';
+						$content['forwards'] = [];
 					}
 					if (strlen(trim($vacation['text']))==0 && $this->mailConfig['default_vacation_text']) $content['text'] = $this->mailConfig['default_vacation_text'];
 					if (strlen(trim($content['text']))==0)
@@ -590,7 +591,8 @@ class mail_sieve
 						Framework::refresh_opener($msg, 'mail');
 					}
 					//Set default value for days new entry
-					if (empty($content['days']))
+					if ((string)$content['days'] === '' || $content['days'] < 0 ||
+						!$content['days'] && !in_array('VACATION-SECONDS', $icServer->getExtensions()))
 					{
 						$content['days'] = '3';
 					}
@@ -655,7 +657,12 @@ class mail_sieve
 
 									if (!$resSetvac)
 									{
-										$msg = lang('vacation update failed') . "\n" . lang('Vacation notice update failed') . ":" . $this->account->imapServer()->error;
+										$msg = lang('Vacation notice update failed') . ":\n" . $this->account->imapServer()->error;
+										if (!$content['days'])
+										{
+											$msg .= "\n\n".lang('%1 requires Sieve extension %2, maybe try %1 or higher number of days.',
+												lang('Always respond / auto-responder'), 'VACATION-SECONDS', lang('Once per day'));
+										}
 										break;
 									}
 									// schedule job to switch message on/off, if request and not already in past
@@ -709,6 +716,14 @@ class mail_sieve
 					),
 					'addresses' => array_combine($vacRules['aliases'],$vacRules['aliases']),
 				);
+				if (in_array('VACATION-SECONDS', $icServer->getExtensions()))
+				{
+					$sel_options['days']['0'] = lang('Always respond / auto-responder');
+				}
+				for($d=1; $d <= 31; ++$d)
+				{
+					$sel_options['days'][(string)$d] = $d === 1 ? lang('Once per day') : lang('Every %1. day', $d);
+				}
 				if (!isset($account_id))
 				{
 					$readonlys['acc_id'] = true;
@@ -849,7 +864,7 @@ class mail_sieve
 			$this->errorStack['text'] = lang('Please supply the message to send with auto-responses').'!	';
 		}
 
-		if (!$_vacation['days'])
+		if ((string)$_vacation['days'] === '' || $_vacation['days'] < 0)
 		{
 			$this->errorStack['days'] = lang('Please select the number of days to wait between responses').'!';
 		}

@@ -106,13 +106,16 @@ class Link extends Etemplate\Widget
 	public static function ajax_link_search($app, $type, $pattern, $options=array())
 	{
 		$options['type'] = $type ?: $options['type'];
-		if(!$options['num_rows']) $options['num_rows'] = 100;
+		if(!$options['num_rows'])
+		{
+			$options['num_rows'] = max((int)$GLOBALS['egw_info']['user']['preference']['common']['maxmatchs'], 100);
+		}
 
 		$links = Api\Link::query($app, $pattern, $options);
 
 		$response = Api\Json\Response::get();
 		// convert associative array to a real array with value attribute, to preserve the order of numeric keys
-		$response->data(array_values(array_map(static function($key, $value)
+		$result = array_values(array_map(static function ($key, $value)
 		{
 			if (is_array($value))
 			{
@@ -122,7 +125,12 @@ class Link extends Etemplate\Widget
 				'value' => $key,
 				'label' => $value,
 			];
-		}, array_keys($links), $links)));
+		}, array_keys($links), $links));
+		if(array_key_exists('total', $options))
+		{
+			$result['total'] = $options['total'];
+		}
+		$response->data($result);
 	}
 
 	/**

@@ -50,6 +50,7 @@ import './Et2Date/Et2DateTimeToday';
 import './Et2Description/Et2Description';
 import './Et2Dialog/Et2Dialog';
 import './Et2DropdownButton/Et2DropdownButton';
+import './Et2Email/Et2Email';
 import './Expose/Et2ImageExpose';
 import './Expose/Et2DescriptionExpose';
 import './Et2Favorites/Et2Favorites';
@@ -71,12 +72,7 @@ import './Et2Nextmatch/Headers/EntryHeader';
 import './Et2Nextmatch/Headers/FilterHeader';
 import './Et2Select/Et2Listbox';
 import './Et2Select/Et2Select';
-import './Et2Select/Et2SelectAccount';
-import './Et2Select/Et2SelectCategory';
-import './Et2Select/Et2SelectCountry';
-import './Et2Select/Et2SelectEmail';
-import './Et2Select/Et2SelectReadonly';
-import './Et2Select/Et2SelectThumbnail'
+import './Et2Select/SelectTypes';
 import './Et2Select/Tag/Et2Tag';
 import './Et2Select/Tag/Et2CategoryTag';
 import './Et2Select/Tag/Et2EmailTag';
@@ -101,9 +97,18 @@ import './Et2Url/Et2UrlFaxReadonly';
 import "./Layout/Et2Split/Et2Split";
 import "./Layout/RowLimitedMixin";
 import "./Et2Vfs/Et2VfsMime";
+import "./Et2Vfs/Et2VfsPath";
+import "./Et2Vfs/Et2VfsSelectButton";
+import "./Et2Vfs/Et2VfsSelectDialog";
+import "./Et2Vfs/Et2VfsSelectRow";
 import "./Et2Vfs/Et2VfsUid";
 import "./Et2Textbox/Et2Password";
 import './Et2Textbox/Et2Searchbox';
+import "./Et2Tree/Et2Tree";
+import "./Et2Tree/Et2TreeDropdown";
+import "./Et2Tree/Et2TreeDropdownCategory";
+import "./Et2Tree/Et2MultiselectTree"
+
 
 /* Include all widget classes here, we only care about them registering, not importing anything*/
 import './et2_widget_vfs'; // Vfs must be first (before et2_widget_file) due to import cycle
@@ -457,6 +462,10 @@ export class etemplate2
 		{
 			this.close_prompt = this._close_changed_prompt.bind(this);
 			window.addEventListener("beforeunload", this.close_prompt);
+		}
+		else if (window == egw_topWindow())
+		{
+			window.addEventListener("beforeunload", this.destroy_session);
 		}
 		if(this._etemplate_exec_id)
 		{
@@ -1221,8 +1230,9 @@ export class etemplate2
 	 * parameter to add another layer.
 	 *
 	 * @param {et2_widget} _root widget to start iterating
+	 * @param {boolean} skip_reset_dirty true: do NOT reset dirty status
 	 */
-	getValues(_root : et2_widget)
+	getValues(_root : et2_widget, skip_reset_dirty : boolean)
 	{
 		const result = {};
 
@@ -1283,7 +1293,7 @@ export class etemplate2
 				id = typeof _target == "undefined" ? 0 : Object.keys(_target).length;
 			}
 
-			const value = _widget.getValue();
+			const value = _widget.getValue(true);	// true: let widget know getValue() / submit is calling it
 
 			// Check whether the entry is really undefined
 			if(typeof _target[id] != "undefined" && (typeof _target[id] != 'object' || typeof value != 'object'))
@@ -1319,7 +1329,10 @@ export class etemplate2
 				}
 				delete _target[path[path.length - 1]];
 			}
-			_widget.resetDirty();
+			if (!skip_reset_dirty)
+			{
+				_widget.resetDirty();
+			}
 
 		}, this, et2_IInput);
 

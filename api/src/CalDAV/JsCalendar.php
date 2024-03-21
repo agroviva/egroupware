@@ -19,12 +19,13 @@ use EGroupware\Api;
  * @link https://datatracker.ietf.org/doc/html/rfc8984
  * @link https://jmap.io/spec-calendars.html
  */
-class JsCalendar
+class JsCalendar extends JsBase
 {
+	const APP = 'calendar';
+
 	const MIME_TYPE = "application/jscalendar+json";
 	const MIME_TYPE_JSEVENT = "application/jscalendar+json;type=event";
 	const MIME_TYPE_JSTASK = "application/jscalendar+json;type=task";
-	const MIME_TYPE_JSON = "application/json";
 
 	const TYPE_EVENT = 'Event';
 
@@ -93,9 +94,10 @@ class JsCalendar
 	 * @param array $old=[] existing contact for patch
 	 * @param ?string $content_type=null application/json no strict parsing and automatic patch detection, if method not 'PATCH' or 'PUT'
 	 * @param string $method='PUT' 'PUT', 'POST' or 'PATCH'
+	 * @param ?int $calendar_owner owner of the collection
 	 * @return array
 	 */
-	public static function parseJsEvent(string $json, array $old=[], string $content_type=null, $method='PUT')
+	public static function parseJsEvent(string $json, array $old=[], string $content_type=null, $method='PUT', int $calendar_owner=null)
 	{
 		try
 		{
@@ -108,8 +110,8 @@ class JsCalendar
 				return strpos($key, '/') !== false;
 			}))
 			{
-				// apply patch on JsCard of contact
-				$data = self::patch($data, $old ? self::getJsCalendar($old, false) : [], !$old);
+				// apply patch on JsEvent
+				$data = self::patch($data, $old ? self::getJsCalendar($old, false) : [], !$old || !$strict);
 			}
 
 			if (!isset($data['uid'])) $data['uid'] = null;  // to fail below, if it does not exist
@@ -147,7 +149,7 @@ class JsCalendar
 						break;
 
 					case 'participants':
-						$event['participants'] = self::parseParticipants($value);
+						$event['participants'] = self::parseParticipants($value, $strict, $calendar_owner);
 						break;
 
 					case 'priority':
@@ -159,7 +161,11 @@ class JsCalendar
 						break;
 
 					case 'alerts':
-						throw new \Exception('Creating or modifying alerts is NOT (yet) implemented!');
+					case 'useDefaultAlerts':
+						if (!isset($event['alarm']))
+						{
+							$event['alarm'] = self::parseAlerts($data, $strict, $calendar_owner);
+						}
 						break;
 
 					case 'recurrenceRules':
@@ -173,7 +179,7 @@ class JsCalendar
 						break;
 
 					case 'egroupware.org:customfields':
-						$event += self::parseCustomfields($value, $strict);
+						$event = array_merge($event, self::parseCustomfields($value, $strict));
 						break;
 
 					case 'prodId':
@@ -194,187 +200,20 @@ class JsCalendar
 		// if no participant given add current user as CHAIR to the event
 		if (empty($event['participants']))
 		{
-			$event['participants'][$GLOBALS['egw_info']['user']['account_id']] = 'ACHAIR';
+			$event['participants'][$calendar_owner ?? $GLOBALS['egw_info']['user']['account_id']] = 'ACHAIR';
 		}
 
 		return $event;
-	}
-
-	const URN_UUID_PREFIX = 'urn:uuid:';
-	const UUID_PREG = '/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i';
-
-	/**
-	 * Get UID with either "urn:uuid:" prefix for UUIDs or just the text
-	 *
-	 * @param string $uid
-	 * @return string
-	 */
-	protected static function uid(string $uid)
-	{
-		return preg_match(self::UUID_PREG, $uid) ? self::URN_UUID_PREFIX.$uid : $uid;
-	}
-
-	/**
-	 * Parse and optionally generate UID
-	 *
-	 * @param string|null $uid
-	 * @param string|null $old old value, if given it must NOT change
-	 * @param bool $generate_when_empty true: generate UID if empty, false: throw error
-	 * @return string without urn:uuid: prefix
-	 * @throws \InvalidArgumentException
-	 */
-	protected static function parseUid(string $uid=null, string $old=null, bool $generate_when_empty=false)
-	{
-		if (empty($uid) || strlen($uid) < 12)
-		{
-			if (!$generate_when_empty)
-			{
-				throw new \InvalidArgumentException("Invalid or missing UID: ".json_encode($uid));
-			}
-			$uid = \HTTP_WebDAV_Server::_new_uuid();
-		}
-		if (strpos($uid, self::URN_UUID_PREFIX) === 0)
-		{
-			$uid = substr($uid, strlen(self::URN_UUID_PREFIX));
-		}
-		if (isset($old) && $old !== $uid)
-		{
-			throw new \InvalidArgumentException("You must NOT change the UID ('$old'): ".json_encode($uid));
-		}
-		return $uid;
-	}
-
-	/**
-	 * JSON options for errors thrown as exceptions
-	 */
-	const JSON_OPTIONS_ERROR = JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE;
-
-	const AT_TYPE = '@type';
-
-	/**
-	 * Return EGroupware custom fields
-	 *
-	 * @param array $contact
-	 * @return array
-	 */
-	protected static function customfields(array $contact)
-	{
-		$fields = [];
-		foreach(Api\Storage\Customfields::get('calendar') as $name => $data)
-		{
-			$value = $contact['#'.$name];
-			if (isset($value))
-			{
-				switch($data['type'])
-				{
-					case 'date-time':
-						$value = Api\DateTime::to($value, Api\DateTime::RFC3339);
-						break;
-					case 'float':
-						$value = (double)$value;
-						break;
-					case 'int':
-						$value = (int)$value;
-						break;
-					case 'select':
-						$value = explode(',', $value);
-						break;
-				}
-				$fields[$name] = array_filter([
-					'value' => $value,
-					'type' => $data['type'],
-					'label' => $data['label'],
-					'values' => $data['values'],
-				]);
-			}
-		}
-		return $fields;
-	}
-
-	/**
-	 * Parse custom fields
-	 *
-	 * Not defined custom fields are ignored!
-	 * Not send custom fields are set to null!
-	 *
-	 * @param array $cfs name => object with attribute data and optional type, label, values
-	 * @return array
-	 */
-	protected static function parseCustomfields(array $cfs)
-	{
-		$contact = [];
-		$definitions = Api\Storage\Customfields::get('calendar');
-
-		foreach($definitions as $name => $definition)
-		{
-			$data = $cfs[$name];
-			if (isset($data))
-			{
-				if (is_scalar($data))
-				{
-					$data = ['value' => $data];
-				}
-				if (!is_array($data) || !array_key_exists('value', $data))
-				{
-					throw new \InvalidArgumentException("Invalid customfield object $name: ".json_encode($data, self::JSON_OPTIONS_ERROR));
-				}
-				switch($definition['type'])
-				{
-					case 'date-time':
-						$data['value'] = Api\DateTime::to($data['value'], 'object');
-						break;
-					case 'float':
-						$data['value'] = (double)$data['value'];
-						break;
-					case 'int':
-						$data['value'] = round($data['value']);
-						break;
-					case 'select':
-						if (is_scalar($data['value'])) $data['value'] = explode(',', $data['value']);
-						$data['value'] = array_intersect(array_keys($definition['values']), $data['value']);
-						$data['value'] = $data['value'] ? implode(',', (array)$data['value']) : null;
-						break;
-				}
-				$contact['#'.$name] = $data['value'];
-			}
-			// set not return cfs to null
-			else
-			{
-				$contact['#'.$name] = null;
-			}
-		}
-		// report not existing cfs to log
-		if (($not_existing=array_diff(array_keys($cfs), array_keys($definitions))))
-		{
-			error_log(__METHOD__."() not existing/ignored custom fields: ".implode(', ', $not_existing));
-		}
-		return $contact;
-	}
-
-	/**
-	 * Return object of category-name(s) => true
-	 *
-	 * @link https://datatracker.ietf.org/doc/html/draft-ietf-jmap-jscontact-07#section-2.5.4
-	 * @param ?string $cat_ids comma-sep. cat_id's
-	 * @return true[]
-	 */
-	protected static function categories(?string $cat_ids)
-	{
-		$cat_ids = array_filter($cat_ids ? explode(',', $cat_ids): []);
-
-		return array_combine(array_map(static function ($cat_id)
-		{
-			return Api\Categories::id2name($cat_id);
-		}, $cat_ids), array_fill(0, count($cat_ids), true));
 	}
 
 	/**
 	 * Parse categories object
 	 *
 	 * @param array $categories category-name => true pairs
+	 * @param bool $multiple
 	 * @return ?string comma-separated cat_id's
 	 */
-	protected static function parseCategories(array $categories)
+	protected static function parseCategories(array $categories, bool $multiple=true)
 	{
 		static $bo=null;
 		$cat_ids = [];
@@ -419,29 +258,6 @@ class JsCalendar
 	protected static function parseString(string $value=null)
 	{
 		return $value;
-	}
-
-	/**
-	 * Return a date-time value in UTC
-	 *
-	 * @link https://datatracker.ietf.org/doc/html/rfc8984#section-1.4.4
-	 * @param null|string|\DateTime $date
-	 * @return string|null
-	 */
-	protected static function UTCDateTime($date)
-	{
-		static $utc=null;
-		if (!isset($utc)) $utc = new \DateTimeZone('UTC');
-
-		if (!isset($date))
-		{
-			return null;
-		}
-		$date = Api\DateTime::to($date, 'object');
-		$date->setTimezone($utc);
-
-		// we need to use "Z", not "+00:00"
-		return substr($date->format(Api\DateTime::RFC3339), 0, -6).'Z';
 	}
 
 	const DATETIME_FORMAT = 'Y-m-d\TH:i:s';
@@ -516,16 +332,10 @@ class JsCalendar
 		{
 			throw new \InvalidArgumentException("Invalid or missing start: ".json_encode($data['start']));
 		}
-		else
-		{
-			$parsed['start'] = new Api\DateTime($data['start'], !empty($data['timeZone']) ? new \DateTimeZone($data['timeZone']) : null);
-			$parsed['tzid'] = $data['timeZone'] ?? null;
-		}
-		if (empty($data['duration']) || !preg_match('/^(-)?P(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?$/', $data['duration'], $matches))
-		{
-			throw new \InvalidArgumentException("Invalid or missing duration: ".json_encode($data['duration']));
-		}
-		$duration = new \DateInterval($data['duration']);
+		$parsed['start'] = new Api\DateTime($data['start'], !empty($data['timeZone']) ? new \DateTimeZone($data['timeZone']) : null);
+		$parsed['tzid'] = $data['timeZone'] ?? null;
+
+		$duration = self::parseSignedDuration($data['duration'] ?? null);
 		$parsed['end'] = new Api\DateTime($parsed['start']);
 		$parsed['end']->add($duration);
 		if (($parsed['whole_day'] = !empty($data['showWithoutTime'])))
@@ -535,23 +345,49 @@ class JsCalendar
 		return $parsed;
 	}
 
+	/**
+	 * Parse a signed duration
+	 *
+	 * @param string $duration
+	 * @param bool $return_secs true: return seconds as integer, false/default: return \DateInterval
+	 * @return \DateInterval|int
+	 * @throws \Exception
+	 */
+	protected static function parseSignedDuration(string $duration, bool $return_secs=false)
+	{
+		if (empty($duration) || !preg_match('/^(-)?P(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?$/', $duration))
+		{
+			throw new \InvalidArgumentException("Invalid or missing duration: ".json_encode($duration));
+		}
+		$interval = new \DateInterval($duration);
+
+		if ($return_secs)
+		{
+			$reference = new \DateTimeImmutable('now');
+			$endtime = $reference->add($interval);
+			return $endtime->getTimestamp() - $reference->getTimestamp();
+		}
+		return $interval;
+	}
+
 	const TYPE_PARTICIPANT = 'Participant';
+
+	static $status2jscal = [
+		'U' => 'needs-action',
+		'A' => 'accepted',
+		'R' => 'declined',
+		'T' => 'tentative',
+		//'' => 'delegated',
+	];
 
 	/**
 	 * Return participants object
 	 *
 	 * @param array $event
 	 * @return array
-	 */
+	 * @todo Resources and Groups without email	 */
 	protected static function Participants(array $event)
 	{
-		static $status2jscal = [
-			'U' => 'needs-action',
-			'A' => 'accepted',
-			'R' => 'declined',
-			'T' => 'tentative',
-			//'' => 'delegated',
-		];
 		$participants = [];
 		foreach($event['participants'] as $uid => $status)
 		{
@@ -589,12 +425,107 @@ class JsCalendar
 					'optional' => $role === 'OPT-PARTICIPANT',
 					'informational' => $role === 'NON-PARTICIPANT',
 				]),
-				'participationStatus' => $status2jscal[$status],
+				'participationStatus' => self::$status2jscal[$status],
 			]);
 			$participants[$uid] = $participant;
 		}
 
 		return $participants;
+	}
+
+	/**
+	 * Parse participants object
+	 *
+	 * @param array $participants
+	 * @param bool $strict true: require @types and objects with attributes name, email, ...
+	 * @param ?int $calendar_owner owner of the calendar / collection
+	 * @return array
+	 * @todo Resources and Groups without email
+	 */
+	protected static function parseParticipants(array $participants, bool $strict=true, int $calendar_owner=null)
+	{
+		$parsed = [];
+
+		foreach($participants as $uid => $participant)
+		{
+			if ($strict && (!is_array($participant) || $participant[self::AT_TYPE] !== self::TYPE_PARTICIPANT))
+			{
+				throw new \InvalidArgumentException("Missing or invalid @type: ".json_encode($participant, self::JSON_OPTIONS_ERROR));
+			}
+			elseif (!is_array($participant))
+			{
+				$participant = [
+					'email' => $participant,
+				];
+			}
+			// check if the uid is valid and matches the data in the object
+			if (($test_uid = self::Participants(['participants' => [
+				$uid => 'U'
+			]])) && ($test_uid['email'] ?? null) === $participant['email'] &&
+				($test_uid['kind'] ?? null) === ($participant['kind'] ?? null) &&
+				($test_uid['name'] ?? null) === ($participant['name'] ?? null))
+			{
+				// use $uid as is
+			}
+			else
+			{
+				if (empty($participant['email']) || !preg_match(Api\Etemplate\Widget\Url::EMAIL_PREG, $participant['email']))
+				{
+					throw new \InvalidArgumentException("Missing or invalid email address: ".json_encode($participant, self::JSON_OPTIONS_ERROR));
+				}
+				static $contacts = null;
+				if (!isset($contacts)) $contacts = new Api\Contacts();
+				if ((list($data) = $contacts->search([
+						'email' => $participant['email'],
+						'email_home' => $participant['email'],
+					], ['id','egw_addressbook.account_id as account_id','n_fn'],
+					'egw_addressbook.account_id IS NOT NULL DESC, n_fn IS NOT NULL DESC',
+					'','',false,'OR')))
+				{
+					// found an addressbook entry
+					$uid = $data['account_id'] ? (int)$data['account_id'] : 'c'.$data['id'];
+				}
+				else
+				{
+					$uid = 'e'.(empty($participant['name']) ? $participant['email'] : $participant['name'].' <'.$participant['email'].'>');
+				}
+			}
+			$default_status = $uid === $GLOBALS['egw_info']['user']['account_id'] ? 'A' : 'U';
+			$default_role = $uid === $calendar_owner ? 'CHAIR' : 'REQ-PARTICIPANT';
+			$parsed[$uid] = \calendar_so::combine_status(array_search($participant['participationStatus'] ?? $default_status, self::$status2jscal) ?: $default_status,
+				1, self::jscalRoles2role($participant['roles'] ?? null, $default_role));
+		}
+
+		return $parsed;
+	}
+
+	protected static function jscalRoles2role(array $roles=null, string $default_role=null)
+	{
+		$role = $default_role ?? 'REQ-PARTICIPANT';
+		foreach($roles ?? [] as $name => $value)
+		{
+			if ($value && $role !== 'CHAIR')
+			{
+				switch($name)
+				{
+					case 'owner':   // we ignore the owner, it's set automatic to the owner of the calendar/collection
+						break;
+					case 'attendee':
+						$role = 'REQ-PARTICIPANT';
+						break;
+					case 'optional':
+						$role = 'OPT-PARTICIPANT';
+						break;
+					case 'informational':
+						$role = 'NON-PARTICIPANT';
+						break;
+					case 'chair':
+						$role = 'CHAIR';
+						break;
+				}
+			}
+		}
+		return $role;
 	}
 
 	const TYPE_LOCATION = 'Location';
@@ -635,6 +566,23 @@ class JsCalendar
 			3 => 1,		// high
 		);
 		return $priority_egw2jscal[$priority];
+	}
+
+	/**
+	 * Parse priority
+	 *
+	 * @param int $priority
+	 * @return int
+	 */
+	protected static function parsePriority(int $priority)
+	{
+		static $priority_jscal2egw = [
+			9 => 1, 8 => 1, 7 => 1, // low
+			6 => 2, 5 => 2, 4 => 2, // normal
+			3 => 3, 2 => 3, 1 => 3, // high
+			0 => 0, // undefined
+		];
+		return $priority_jscal2egw[$priority] ?? throw new \InvalidArgumentException("Priority must be between 0 and 9");
 	}
 
 	const TYPE_RECURRENCE_RULE = 'RecurrenceRule';
@@ -749,6 +697,7 @@ class JsCalendar
 
 	const TYPE_ALERT = 'Alert';
 	const TYPE_OFFSET_TRIGGER = 'OffsetTrigger';
+	const TYPE_ABSOLUTE_TRIGGER = 'AbsoluteTrigger';
 
 	/**
 	 * Return alerts object
@@ -769,7 +718,7 @@ class JsCalendar
 				self::AT_TYPE => self::TYPE_ALERT,
 				'trigger' => [
 					self::AT_TYPE => self::TYPE_OFFSET_TRIGGER,
-					'offset' => $alarm['offset'],
+					'offset' => self::Duration(0, $alarm['offset'], false),
 				],
 				'acknowledged' => empty($alarm['attrs']['ACKNOWLEDGED']['value']) ? null :
 					self::UTCDateTime(new Api\DateTime($alarm['attrs']['ACKNOWLEDGED']['value'])),
@@ -779,73 +728,73 @@ class JsCalendar
 	}
 
 	/**
-	 * Patch JsEvent
+	 * Parse alerts object / $data['alerts']
 	 *
-	 * @param array $patches JSON path
-	 * @param array $jsevent to patch
-	 * @param bool $create =false true: create missing components
-	 * @return array patched $jsevent
+	 * @param array $data full JsCalendar object, not just alerts and useDefaultAlerts attribute
+	 * @param bool $strict true: require JsCalendar @type, false: relaxed parsing
+	 * @return array of alerts
+	 * @throws Api\Exception
 	 */
-	public static function patch(array $patches, array $jsevent, bool $create=false)
+	protected static function parseAlerts(array $data, bool $strict=false, int $calendar_owner=null)
 	{
-		foreach($patches as $path => $value)
+		$alarms = [];
+		if (!empty($data['useDefaultAlerts']))
 		{
-			$parts = explode('/', $path);
-			$target = &$jsevent;
-			foreach($parts as $n => $part)
+			$alarm_pref = !empty($data['showWithoutTime']) ? 'default-alarm-wholeday' : 'default-alarm';
+			$cal_prefs = $GLOBALS['egw_info']['user']['preferences']['calendar'];
+			// if default alarm set in prefs --> add it
+			// we assume here that user does NOT have a whole-day but no regular default-alarm, no whole-day!
+			if(isset($cal_prefs[$alarm_pref]) && (string)$cal_prefs[$alarm_pref] !== '')
 			{
-				if (!isset($target[$part]) && $n < count($parts)-1 && !$create)
-				{
-					throw new \InvalidArgumentException("Trying to patch not existing attribute with path $path!");
-				}
-				$parent = $target;
-				$target = &$target[$part];
-			}
-			if (isset($value))
-			{
-				$target = $value;
-			}
-			else
-			{
-				unset($parent[$part]);
+				$alarms[] = [
+					'default' => 1,
+					'offset'  => 60 * $cal_prefs[$alarm_pref],
+					'all'     => $cal_prefs['default-alarm-for'] === 'all',
+					'owner'   => $calendar_owner ?? $GLOBALS['egw_info']['user']['account_id'],
+				];
 			}
 		}
-		return $jsevent;
-	}
+		foreach($data['alerts'] ?? [] as $uid => $alert)
+		{
+			$alarm = [
+				'uid' => $uid,
+				'owner' => $calendar_owner ?? $GLOBALS['egw_info']['user']['account_id'],
+			];
+			if ($strict && ($alert[self::AT_TYPE] ?? null) !== self::TYPE_ALERT)
+			{
+				throw new \InvalidArgumentException("Missing @type: Alert");
+			}
+			if (empty($alert['trigger']) || $strict && empty($alert['trigger'][self::AT_TYPE]))
+			{
+				throw new \InvalidArgumentException("Missing or invalid Alert trigger without @type: ".json_encode($alert['trigger'] ?? null));
+			}
+			switch ($alert['trigger'][self::AT_TYPE] ?? ($strict || !isset($alert['trigger']['offset']) ? null : self::TYPE_OFFSET_TRIGGER))
+			{
+				case self::TYPE_OFFSET_TRIGGER:
+					$alarm['offset'] = self::parseSignedDuration($alert['trigger']['offset'] ?? null, true);
+					if (isset($alert['trigger']['relativeTo']) && $alert['trigger']['relativeTo'] === 'end')
+					{
+						$alarm['offset'] += self::parseSignedDuration($data['duration'], true);
+					}
+					break;
 
-	/**
-	 * Map all kind of exceptions while parsing to a JsCalendarParseException
-	 *
-	 * @param \Throwable $e
-	 * @param string $type
-	 * @param ?string $name
-	 * @param mixed $value
-	 * @throws JsCalendarParseException
-	 */
-	protected static function handleExceptions(\Throwable $e, $type='JsCalendar', ?string $name, $value)
-	{
-		try {
-			throw $e;
-		}
-		catch (\JsonException $e) {
-			throw new JsCalendarParseException("Error parsing JSON: ".$e->getMessage(), 422, $e);
-		}
-		catch (\InvalidArgumentException $e) {
-			throw new JsCalendarParseException("Error parsing $type attribute '$name': ".
-				str_replace('"', "'", $e->getMessage()), 422);
-		}
-		catch (\TypeError $e) {
-			$message = $e->getMessage();
-			if (preg_match('/must be of the type ([^ ]+( or [^ ]+)*), ([^ ]+) given/', $message, $matches))
-			{
-				$message = "$matches[1] expected, but got $matches[3]: ".
-					str_replace('"', "'", json_encode($value, self::JSON_OPTIONS_ERROR));
+				case self::TYPE_ABSOLUTE_TRIGGER:
+					if (!empty($alert['trigger']['when']))
+					{
+						$alarm['offset'] = (new Api\DateTime($alert['trigger']['when']))->getTimestamp() - self::parseStartDuration($data)['start']->getTimeStamp();
+						break;
+					}
+					// fall through
+				default:
+					throw new \InvalidArgumentException("Invalid Alert trigger: ".json_encode($alert['trigger'] ?? null));
 			}
-			throw new JsCalendarParseException("Error parsing $type attribute '$name': $message", 422, $e);
+			if (isset($alert['acknowledged']))
+			{
+				$alarm['attrs'] = ['ACKNOWLEDGED' => ['value' => (new Api\DateTime($alert['acknowledged']))->getTimestamp()]];
+			}
+			$alarms[] = $alarm;
 		}
-		catch (\Throwable $e) {
-			throw new JsCalendarParseException("Error parsing $type attribute '$name': ". $e->getMessage(), 422, $e);
-		}
+		return $alarms;
 	}
 
 	/**

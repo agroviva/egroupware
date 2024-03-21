@@ -21,18 +21,20 @@ import {fetchAll, nm_action, nm_compare_field} from "../../api/js/etemplate/et2_
 import "./CRM";
 import {egw} from "../../api/js/jsapi/egw_global";
 import {LitElement} from "@lion/core";
-import {Et2SelectState} from "../../api/js/etemplate/Et2Select/Et2Select";
-import {Et2SelectCountry} from "../../api/js/etemplate/Et2Select/Et2SelectCountry";
+import {Et2SelectCountry} from "../../api/js/etemplate/Et2Select/Select/Et2SelectCountry";
+
+import {Et2SelectState} from "../../api/js/etemplate/Et2Select/Select/Et2SelectState";
 
 /**
  * Object to call app.addressbook.openCRMview with
  */
-export 	interface CrmParams {
-	contact_id: number|string;
-	crm_list?: "infolog"|"tracker"|"infolog-organisation"; // default: use preference
-	title?: string;	// default: link-title of contact_id
-	icon?: string;	// default: avatar for contact_id
-	index?: number;
+export interface CrmParams
+{
+	contact_id : number | string;
+	crm_list? : "infolog" | "tracker" | "infolog-organisation"; // default: use preference
+	title? : string;	// default: link-title of contact_id
+	icon? : string;	// default: avatar for contact_id
+	index? : number;
 }
 
 /**
@@ -879,11 +881,11 @@ class AddressbookApp extends EgwApp
 		var lists = this.et2.getWidgetById('filter2');
 		var list = lists.getValue() || 0;
 		var value = null;
-		for(var i = 0; i < lists.options.select_options.length; i++)
+		for(var i = 0; i < lists.select_options.length; i++)
 		{
-			if(lists.options.select_options[i].value == list)
+			if(lists.select_options[i].value == list)
 			{
-				value = lists.options.select_options[i];
+				value = lists.select_options[i];
 			}
 		}
 		Et2Dialog.show_prompt(
@@ -902,7 +904,7 @@ class AddressbookApp extends EgwApp
 							if(result)
 							{
 								value.label = name;
-								lists.set_select_options(lists.options.select_options);
+								lists.select_options = lists.select_options;
 							}
 						}
 					).sendRequest(true);
@@ -1117,21 +1119,20 @@ class AddressbookApp extends EgwApp
 	 * @param {egwAction} action - The document they clicked
 	 * @param {egwActionObject[]} selected - Rows selected
 	 */
-	merge_mail(action, selected, target)
+	_mergeEmail(action, data)
 	{
 		// Special processing for email documents - ask about infolog
-		if(action && action.data && selected.length > 1)
+		if(action && data && (data.id.length > 1 || data.select_all))
 		{
-			var callback = function(button, value) {
+			const callback = (button, value) =>
+			{
 				if(button == Et2Dialog.OK_BUTTON)
 				{
-					var _action_data = jQuery.extend(true, {}, action.data);
 					if(value.infolog)
 					{
-						_action_data.menuaction += '&to_app=infolog&info_type=' + value.info_type;
-						action.data = _action_data;
+						data.menuaction += '&to_app=infolog&info_type=' + value.info_type;
 					}
-					nm_action(action, selected, target);
+					return super._mergeEmail(action, data);
 				}
 			};
 			let dialog = new Et2Dialog(this.egw);
@@ -1148,7 +1149,7 @@ class AddressbookApp extends EgwApp
 		else
 		{
 			// Normal processing for only one contact selected
-			return nm_action(action, selected, target);
+			return super._mergeEmail(action, data);
 		}
 	}
 
@@ -1324,7 +1325,14 @@ class AddressbookApp extends EgwApp
 	 */
 	getWindowTitle()
 	{
-		return this.et2.getValueById('n_fn');
+		try
+		{
+			return this.et2.getValueById('n_fn');
+		}
+		catch(e)
+		{
+			return "";
+		}
 	}
 
 	/**

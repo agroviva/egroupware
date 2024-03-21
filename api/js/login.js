@@ -20,8 +20,7 @@ catch (exception){
 	alert('Your browser is not up-to-date (JavaScript ES2020 compatible), you may experience some of the features not working.');
 }
 
-// listen to egw-is-created object to make sure egw object is ready
-document.addEventListener('egw-is-created', function(){
+const login_on_ready = () => {
 	egw_ready.then(function()
 	{
 		jQuery(document).ready(function()
@@ -73,9 +72,9 @@ document.addEventListener('egw-is-created', function(){
 				}
 			});
 			// or optional SAML login with a button for a single IdP
-			jQuery('input[type="submit"][name="auth=saml"]').on('click', function(){
+			jQuery('input[type="submit"][name^="auth="]').on('click', function(){
 				this.form.method = 'get';
-				jQuery(this.form).append('<input type="hidden" name="auth" value="saml"/>');
+				jQuery(this.form).append('<input type="hidden" name="auth" value="'+this.name.split('=')[1]+'"/>');
 			});
 			// prefer [Login] button below over maybe existing SAML login button above
 			jQuery('input').on('keypress', function(e)
@@ -104,4 +103,18 @@ document.addEventListener('egw-is-created', function(){
 				console.log('Service worker registration failed, error:', error);
 			});
 	}
-});
+};
+
+// run login_on_ready, once egw_ready is available, currently it is already available, as login.js is included in the body
+if (typeof egw_ready !== "undefined")
+{
+	login_on_ready();
+}
+else
+{
+	const wait4egw_ready = window.setInterval(() => {
+		if (typeof egw_ready === "undefined") return;
+		window.clearInterval(wait4egw_ready);
+		login_on_ready();
+	}, 100);
+}

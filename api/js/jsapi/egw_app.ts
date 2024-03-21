@@ -20,7 +20,10 @@ import {et2_valueWidget} from "../etemplate/et2_core_valueWidget";
 import {nm_action} from "../etemplate/et2_extension_nextmatch_actions";
 import {Et2Dialog} from "../etemplate/Et2Dialog/Et2Dialog";
 import {Et2Favorites} from "../etemplate/Et2Favorites/Et2Favorites";
-import {EgwAction} from "../egw_action/EgwAction";
+import {loadWebComponent} from "../etemplate/Et2Widget/Et2Widget";
+import {Et2VfsSelectDialog} from "../etemplate/Et2Vfs/Et2VfsSelectDialog";
+import {Et2Checkbox} from "../etemplate/Et2Checkbox/Et2Checkbox";
+import type {EgwAction} from "../egw_action/EgwAction";
 
 /**
  * Type for push-message
@@ -570,12 +573,12 @@ export abstract class EgwApp
 					// Not using resetSort() to avoid the extra applyFilters() call
 					_widget.sortBy(undefined, undefined, false);
 				}
+				_widget.applyFilters(state.state || state.filter || {});
 				if(state.state && state.state.selectcols)
 				{
 					// Make sure it's a real array, not an object, then set cols
 					_widget.set_columns(jQuery.extend([], state.state.selectcols));
 				}
-				_widget.applyFilters(state.state || state.filter || {});
 				nextmatched = true;
 			}, this, et2_nextmatch);
 			if(nextmatched) return false;
@@ -796,7 +799,7 @@ export abstract class EgwApp
 	 * @param {egwAction} _action
 	 * @param {egwActionObject[]} _selected
 	 */
-	merge(_action : egwAction, _selected : egwActionObject[])
+	async mergeAction(_action : egwAction, _selected : egwActionObject[])
 	{
 		// Find what we need
 		let nm = null;
@@ -810,15 +813,9 @@ export abstract class EgwApp
 			{
 				nm = action.data.nextmatch;
 			}
-			if(as_pdf === null && action.getActionById('as_pdf') !== null)
-			{
-				as_pdf = action.getActionById('as_pdf').checked;
-			}
 			action = action.parent;
 		}
 		let all = nm?.getSelection().all || false;
-
-		as_pdf = as_pdf || false;
 
 		// Get list of entry IDs
 		let ids = [];
@@ -827,14 +824,130 @@ export abstract class EgwApp
 			let split = _selected[i].id.split("::");
 			ids.push(split[1]);
 		}
+		let document = await this._getMergeDocument(nm?.getInstanceManager(), _action);
+		if(!document.document)
+		{
+			return;
+		}
 
 		let vars = {
 			..._action.data.merge_data,
-			pdf: as_pdf,
+			document: document.document,
+			pdf: document.pdf ?? false,
 			select_all: all,
-			id: JSON.stringify(ids)
+			id: ids
 		};
-		egw.open_link(egw.link('/index.php', vars), '_blank');
+		if(document.mime == "message/rfc822")
+		{
+			return this._mergeEmail(_action.clone(), vars);
+		}
+		else
+		{
+			vars.id = JSON.stringify(ids);
+		}
+		this.egw.open_link(this.egw.link('/index.php', vars), '_blank');
+	}
+
+	/**
+	 * Ask the user for a target document to merge into
+	 *
+	 * @returns {Promise<{document : string, pdf : boolean, mime : string}>}
+	 * @protected
+	 */
+
+	protected _getMergeDocument(et2?, action? : EgwAction) : Promise<{
+		document : string,
+		pdf : boolean,
+		mime : string
+	}>
+	{
+		let path = action?.data?.merge_data?.directory ?? "";
+		let dirPref = <string>this.egw.preference('document_dir', this.appname) ?? "";
+		let dirs = dirPref.split('/[,\s]+\//');
+		dirs.forEach((d, index) =>
+		{
+			if(index)
+			{
+				d = "/" + d;
+			}
+		});
+		let fileSelect = <Et2VfsSelectDialog><unknown>loadWebComponent('et2-vfs-select-dialog', {
+			class: "egw_app_merge_document",
+			title: this.egw.lang("Insert in document"),
+			mode: "open",
+			path: path ?? dirs?.pop() ?? "",
+			open: true
+		}, et2.widgetContainer);
+		if(!et2)
+		{
+			document.body.append(fileSelect);
+		}
+		let pdf = <Et2Checkbox><unknown>loadWebComponent("et2-checkbox", {
+			slot: "footer",
+			label: "As PDF"
+		}, fileSelect);
+
+		// Disable PDF checkbox for emails
+		fileSelect.addEventListener("et2-select", e =>
+		{
+			let canPDF = true;
+			fileSelect.value.forEach(path =>
+			{
+				if(fileSelect.fileInfo(path).mime == "message/rfc822")
+				{
+					canPDF = false;
+				}
+			});
+			pdf.disabled = !canPDF;
+		});
+		return fileSelect.getComplete().then((values) =>
+		{
+			if(!values[0])
+			{
+				return {document: '', pdf: false, mime: ""};
+			}
+
+			const value = values[1].pop() ?? "";
+			const fileInfo = fileSelect.fileInfo(value) ?? {};
+			fileSelect.remove();
+			return {document: value, pdf: pdf.getValue(), mime: fileInfo.mime ?? ""};
+		});
+	}
+
+	/**
+	 * Merging into an email
+	 *
+	 * @param {object} data
+	 * @protected
+	 */
+	protected _mergeEmail(action, data : object)
+	{
+		const ids = data['id'];
+		// egw.open() used if only 1 row selected
+		data['egw_open'] = 'edit-mail--';
+		data['target'] = 'compose_' + data.document;
+
+		// long_task runs menuaction once for each selected row
+		data['nm_action'] = 'long_task';
+		data['popup'] = this.egw.link_get_registry('mail', 'edit_popup');
+		data['message'] = this.egw.lang('insert in %1', data.document);
+
+		data['menuaction'] = 'mail.mail_compose.ajax_merge';
+		action.data = data;
+
+		if(data['select_all'] || ids.length > 1)
+		{
+			data['menuaction'] += "&document=" + data.document + "&merge=" + data.merge;
+			nm_action(action, null, data['target'], {all: data['select_all'], ids: ids});
+		}
+		else
+		{
+			this.egw.open(ids.pop(), 'mail', 'edit', {
+				from: 'merge',
+				document: data.document,
+				merge: data.merge
+			}, data['target']);
+		}
 	}
 
 	/**
@@ -940,7 +1053,7 @@ export abstract class EgwApp
 	{
 		// Get current state
 		// Make sure it's an object - deep copy to prevent references in sub-objects (col_filters)
-		state = jQuery.extend(true, {}, this.getState(), state || {});
+		state = {...this.getState(), ...(state || {})};
 
 		this._create_favorite_popup(state);
 
@@ -1007,8 +1120,9 @@ export abstract class EgwApp
 		let filter_list = [];
 		let add_to_popup = function(arr, inset = "")
 		{
-			jQuery.each(arr, function(index, filter)
+			Object.keys(arr).forEach((index) =>
 			{
+				let filter = arr[index];
 				filter_list.push({
 					label: inset + index.toString(),
 					value: (typeof filter != "object" ? "" + filter : "")
@@ -1022,7 +1136,7 @@ export abstract class EgwApp
 		add_to_popup(data.content.state);
 		data.content.current_filters = filter_list;
 
-		let save_callback = (button, value) =>
+		let save_callback = async(button, value) =>
 		{
 			if(button !== Et2Dialog.OK_BUTTON)
 			{
@@ -1034,6 +1148,16 @@ export abstract class EgwApp
 				// Add to the list
 				value.name = (<string>value.name).replace(/(<([^>]+)>)/ig, "");
 				let safe_name = (<string>value.name).replace(/[^A-Za-z0-9-_]/g, "_");
+				if(safe_name != value.name)
+				{
+					// Check if the label matches an existing preference, consider it an update
+					let existing = this.egw.preference(favorite_prefix + safe_name, this.appname);
+					if(existing && existing.name !== value.name)
+					{
+						// Name mis-match, this is a new favorite with the same safe name
+						safe_name += "_" + await this.egw.hashString(value.name);
+					}
+				}
 				let favorite = {
 					name: value.name,
 					group: value.group || false,
@@ -1066,7 +1190,7 @@ export abstract class EgwApp
 				if(this.sidebox)
 				{
 					// Remove any existing with that name
-					jQuery('[data-id="' + safe_name + '"]', this.sidebox).remove();
+					this.sidebox.get(0).querySelectorAll('[data-id="' + safe_name + '"]').forEach(e => e.remove());
 
 					// Create new item
 					var html = "<li data-id='" + safe_name + "' data-group='" + favorite.group + "' class='ui-menu-item' role='menuitem'>\n";
@@ -1742,7 +1866,7 @@ export abstract class EgwApp
 				},
 				template: egw.webserverUrl + '/api/templates/default/pgp_backup_restore.xet',
 				class: "pgp_backup_restore",
-				modal: true
+				isModal: true
 			});
 			return dialog;
 		};
@@ -1801,7 +1925,7 @@ export abstract class EgwApp
 				},
 				template: egw.webserverUrl + '/api/templates/default/pgp_installation.xet',
 				class: "pgp_installation",
-				modal: true
+				isModal: true
 				//resizable:false,
 			});
 		};
@@ -2227,9 +2351,6 @@ export abstract class EgwApp
 	{
 		return EgwApp._instances[Symbol.iterator]();
 	}
-
-	//TODO check if this makes any sense
-	confirm:(param: EgwAction, _senders:any, _target:any)=>any=undefined
 }
 
 // EgwApp need to be global on window, as it's used to iterate through all EgwApp instances

@@ -105,7 +105,7 @@ namespace EGroupware\Api;
  *	}
  * All entries are optional, thought you only get conected functionality, if you implement them ...
  *
- * The BO-layer implementes some extra features on top of the so-layer:
+ * The BO-layer implements some extra features on top of the so-layer:
  * 1) It handles links to not already existing entries. This is used by the eTemplate link-widget, which allows to
  *    setup links even for new / not already existing entries, before they get saved.
  * 	  In that case you have to set the first id to 0 for the link-static function and pass the array returned in that id
@@ -291,8 +291,8 @@ class Link extends Link\Storage
 	/**
 	 * Get clientside relevant attributes from app registry in json format
 	 *
-	 * Only transfering relevant information cuts approx. half of the size.
-	 * Also only transfering information relevant to apps user has access too.
+	 * Only transferring relevant information cuts approx. half of the size.
+	 * Also only transferring information relevant to apps user has access too.
 	 * Important eg. for mime-registry, to not use calendar for opening iCal files, if user has no calendar!
 	 * As app can store additonal types, we have to check the registring app $data['app'] too!
 	 *
@@ -668,7 +668,7 @@ class Link extends Link\Storage
 	 * @param string $app2 ='' app of second endpoint
 	 * @param string $id2 ='' id in $app2
 	 * @param boolean $hold_for_purge Don't really delete the link, just mark it as deleted and wait for final delete
-	 * @return the number of links deleted
+	 * @return int the number of links deleted
 	 */
 	static function unlink($link_id,$app='',$id='',$owner=0,$app2='',$id2='',$hold_for_purge=false)
 	{
@@ -685,7 +685,7 @@ class Link extends Link\Storage
 	 * @param string $app2 ='' app of second endpoint, or !file (other !app are not yet supported!)
 	 * @param string $id2 ='' id in $app2
 	 * @param boolean $hold_for_purge Don't really delete the link, just mark it as deleted and wait for final delete
-	 * @return the number of links deleted
+	 * @return int|boolean the number of links deleted
 	 */
 	static function unlink2($link_id,$app,&$id,$owner=0,$app2='',$id2='',$hold_for_purge=false)
 	{
@@ -807,7 +807,10 @@ class Link extends Link\Storage
 			echo "Options: "; _debug_array($options);
 		}
 		// limit number of returned rows by default to 100, if no limit is set
-		if (!isset($options['num_rows'])) $options['num_rows'] = self::DEFAULT_NUM_ROWS;
+		if(!isset($options['num_rows']))
+		{
+			$options['num_rows'] = max((int)$GLOBALS['egw_info']['user']['preference']['common']['maxmatchs'], self::DEFAULT_NUM_ROWS);
+		}
 
 		$result = self::exec($method, array($pattern, &$options));
 
@@ -1142,7 +1145,7 @@ class Link extends Link\Storage
 	 * @param string $app app-name
 	 * @param string $name name / key in the registry, eg. 'view'
 	 * @param boolean|array|string|int $url_id format entries like "add", "edit", "view" for actions "url" incl. an ID
-	 *  array to add arbitray parameter eg. ['some_id' => '$id']
+	 *  array to add arbitrary parameter eg. ['some_id' => '$id']
 	 * @return boolean|string false if $app is not registered, otherwise string with the value for $name
 	 */
 	static function get_registry($app, $name, $url_id=false)

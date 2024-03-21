@@ -18,7 +18,7 @@
 						<et2-lavatar  src="$row_cont[avatar]" lname="$row_cont[address]" shape="rounded" size="2.75em"></et2-lavatar>
 					</et2-hbox>
 					<et2-vbox>
-						<et2-url-email  id="${row}[address]" class="$row_cont[class]" readonly="true"></et2-url-email>
+						<et2-url-email  id="${row}[address]" class="$row_cont[class]" readonly="true" emailDisplay="preference"></et2-url-email>
 						<et2-hbox>
 							<et2-description  class="status_img $row_cont[class]"></et2-description>
 							<et2-description  id="${row}[subject]" class="$row_cont[class]" noLang="1"></et2-description>
@@ -42,7 +42,7 @@
 		<et2-hbox  class="mail-index_quotabox"><progress id="nm[quotainpercent]" label="@nm[quota]" class="@nm[quotaclass]"/></et2-hbox>
 	</template>
 	<template id="mail.index" template="" lang="" group="0" version="1.9.001">
-		<tree autoloading="mail.mail_ui.ajax_foldertree" id="nm[foldertree]" onclick="app.mail.mail_changeFolder" parent_node="mail-tree_target"/>
+		<et2-tree autoloading="mail.mail_ui.ajax_foldertree" id="nm[foldertree]" onclick="app.mail.mail_changeFolder" parent_node="mail-tree_target"/>
 		<html id="msg"/>
 		<et2-hbox  class="mail-index_vacation"><et2-vbox>
 			<et2-description  id="nm[vacationnotice]" class="@nm[vacationclass]"></et2-description>

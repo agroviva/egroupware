@@ -187,7 +187,7 @@ class calendar_zpush implements activesync_plugin_write, activesync_plugin_meeti
 		$type = $user = null;
 		$this->backend->splitID($id,$type,$user);
 
-		if (!$cutoffdate) $cutoffdate = $this->bo->now - 100*24*3600;	// default three month back -30 breaks all sync recurrences
+		if (!$cutoffdate) $cutoffdate = time() - 100*24*3600;	// default three month back -30 breaks all sync recurrences
 
 		$filter = array(
 			'users' => $user,
@@ -559,7 +559,7 @@ class calendar_zpush implements activesync_plugin_write, activesync_plugin_meeti
 
 		list($id,$recur_date) = explode(':', $_id)+[null,null];
 
-		if ($type != 'calendar' || $id && !($old_event = $this->calendar->read($id, $recur_date, false, 'server')))
+		if ($type != 'calendar' || $id && !($old_event = $this->calendar->read($id, $recur_date)))
 		{
 			ZLog::Write(LOGLEVEL_DEBUG, __METHOD__."('$folderid',$id,...) Folder wrong or event does not existing");
 			return false;
@@ -588,9 +588,6 @@ class calendar_zpush implements activesync_plugin_write, activesync_plugin_meeti
 		{
 			$skip_notification = true; // to avoid double notification from client AND Server
 		}
-
-		// event is read in server-time, as is AS message, therefore we need to convert to user-time, which is expected by calendar_boupdate
-		$this->calendar->server2usertime($event);
 
 		$messages = null;
 		if (!($id = $this->calendar->update($event, true, true, false, true, $messages, $skip_notification)))
@@ -650,10 +647,12 @@ class calendar_zpush implements activesync_plugin_write, activesync_plugin_meeti
 	/**
 	 * Parse AS message into EGw event array
 	 *
+	 * The returned event is in user-timezone, ready to be saved by BO class operating in user-timezone.
+	 *
 	 * @param SyncAppointment $message
 	 * @param int $account
 	 * @param array $event =array()
-	 * @return array
+	 * @return array event in user-timezone
 	 */
 	private function message2event(SyncAppointment $message, $account, $event=array())
 	{
@@ -783,7 +782,7 @@ class calendar_zpush implements activesync_plugin_write, activesync_plugin_meeti
 		}
 		// preserve all resource types not account, contact or email (eg. resources) for existing events
 		// $account is also preserved, as AS does not add him as participant!
-		foreach((array)$event['participant_types'] as $type => $parts)
+		foreach($event['participant_types'] ?? [] as $type => $parts)
 		{
 			if (in_array($type,array('c','e'))) continue;	// they are correctly representable in AS
 
@@ -800,10 +799,10 @@ class calendar_zpush implements activesync_plugin_write, activesync_plugin_meeti
 			}
 		}
 		// add calendar owner as participant, as otherwise event will NOT be in his calendar, in which it was posted
-		if (!$event['id'] || !$participants || !isset($participants[$account]))
+		if (empty($event['id']) || !$participants || !isset($participants[$account]))
 		{
 			$participants[$account] = calendar_so::combine_status($account == $GLOBALS['egw_info']['user']['account_id'] ?
-				'A' : 'U',1,!$chair_set ? 'CHAIR' : 'REQ-PARTICIPANT');
+				'A' : 'U',1,empty($chair_set) ? 'CHAIR' : 'REQ-PARTICIPANT');
 		}
 		$event['participants'] = $participants;
 
@@ -1138,12 +1137,12 @@ class calendar_zpush implements activesync_plugin_write, activesync_plugin_meeti
 
 				if (!$info) continue;
 
-				if (!$info['email'] && $info['responsible'])
+				if (empty($info['email']) && !empty($info['responsible']))
 				{
 					$info['email'] = $GLOBALS['egw']->accounts->id2name($info['responsible'], 'account_email', true);
 				}
 				$attendee->name = empty($info['cn']) ? $info['name'] : $info['cn'];
-				$attendee->email = $info['email'];
+				$attendee->email = $info['email'] ?? null;
 
 				// external organizer: make him AS organizer, to get correct notifications
 				if ($role == 'CHAIR' && $uid[0] == 'e' && !empty($attendee->email))

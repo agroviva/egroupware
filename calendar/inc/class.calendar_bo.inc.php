@@ -643,7 +643,7 @@ class calendar_bo
 		$offset = isset($params['offset']) && $params['offset'] !== false ? (int) $params['offset'] : false;
 		// socal::search() returns rejected group-invitations, as only the user not also the group is rejected
 		// as we cant remove them efficiantly in SQL, we kick them out here, but only if just one user is displayed
-		$users_in = (array)$params_in['users'];
+		$users_in = (array)($params_in['users']??[]);
 		$remove_rejected_by_user = !in_array($filter,array('all','rejected','everything')) &&
 			count($users_in) == 1 && $users_in[0] > 0 ? $users_in[0] : null;
 		//error_log(__METHOD__.'('.array2string($params_in).", $sql_filter) params[users]=".array2string($params['users']).' --> remove_rejected_by_user='.array2string($remove_rejected_by_user));
@@ -655,7 +655,7 @@ class calendar_bo
 		}
 		// date2ts(,true) converts to server time, db2data converts again to user-time
 		$events =& $this->so->search(isset($start) ? $this->date2ts($start,true) : null,isset($end) ? $this->date2ts($end,true) : null,
-			$users,$cat_id,$filter,$offset,(int)$params['num_rows'],$params,$remove_rejected_by_user);
+			$users,$cat_id,$filter,$offset,(int)($params['num_rows']??0),$params,$remove_rejected_by_user);
 
 		if (isset($params['cols']))
 		{
@@ -945,7 +945,8 @@ class calendar_bo
 		}
 		foreach($events as $event)
 		{
-			$is_exception = in_array(Api\DateTime::to($event['start'], true), $exceptions);
+			// PERIOD
+			$is_exception = $event['recur_type'] != calendar_rrule::PERIOD && in_array(Api\DateTime::to($event['start'], true), $exceptions);
 			$start = $this->date2ts($event['start'],true);
 			if ($event['whole_day'])
 			{
@@ -1090,7 +1091,7 @@ class calendar_bo
 		{
 			if (is_array($ids) || !isset(self::$cached_event['id']) || self::$cached_event['id'] != $ids ||
 				self::$cached_event_date_format != $date_format || $read_recurrence ||
-				self::$cached_event['recur_type'] != MCAL_RECUR_NONE && self::$cached_event_date != $date)
+				!empty(self::$cached_event['recur_type']) && self::$cached_event_date != $date)
 			{
 				$events = $this->so->read($ids,$date ? $this->date2ts($date,true) : 0, $read_recurrence);
 
@@ -1164,12 +1165,20 @@ class calendar_bo
 				new Api\DateTime($event['recur_enddate'], calendar_timezones::DateTimeZone($event['tzid']));
 
 		// unset exceptions, as we need to add them as recurrence too, but marked as exception
-		unset($event['recur_exception']);
+		// (Period needs them though)
+		if($event['recur_type'] != calendar_rrule::PERIOD)
+		{
+			unset($event['recur_exception']);
+		}
 		// loop over all recurrences and insert them, if they are after $start
  		$rrule = calendar_rrule::event2rrule($event, !$event['whole_day'], // true = we operate in usertime, like the rest of calendar_bo
 			// For whole day events, just stay in server time
 			$event['whole_day'] ? Api\DateTime::$server_timezone->getName() : Api\DateTime::$user_timezone->getName()
 		);
+		if($event['recur_type'] == calendar_rrule::PERIOD)
+		{
+			unset($event['recur_exception']);
+		}
 		foreach($rrule as $time)
 		{
 			// $time is in timezone of event, convert it to usertime used here
@@ -1283,7 +1292,7 @@ class calendar_bo
 				if ($info)
 				{
 					$info['type'] = $uid[0];
-					if (!$info['email'] && $info['responsible'])
+					if (empty($info['email']) && $info['responsible'])
 					{
 						$info['email'] = $GLOBALS['egw']->accounts->id2name($info['responsible'],'account_email');
 					}
@@ -1353,7 +1362,7 @@ class calendar_bo
 			$owner = $event['owner'];
 			$private = !$event['public'];
 		}
-		$grant = $grants[$owner];
+		$grant = $grants[$owner] ?? null;
 
 		// now any ACL rights (but invite rights!) implicate FREEBUSY rights (at least READ has to include FREEBUSY)
 		if ($grant & ~self::ACL_INVITE) $grant |= self::ACL_FREEBUSY;
@@ -1373,7 +1382,7 @@ class calendar_bo
 						$grant |= self::ACL_FREEBUSY | Acl::READ | Acl::PRIVAT;
 						break;
 					}
-					elseif ($grants[$uid] & Acl::READ)
+					elseif (isset($grants[$uid]) && ($grants[$uid] & Acl::READ))
 					{
 						// if we have a READ grant from a participant, we dont give an implicit privat grant too
 						$grant |= self::ACL_FREEBUSY | Acl::READ;
@@ -1397,7 +1406,7 @@ class calendar_bo
 		else
 		{
 			$access = $user == $owner || $grant & $needed
-				&& ($needed == self::ACL_FREEBUSY || !$private || $grant & Acl::PRIVAT);
+				&& ($needed == self::ACL_FREEBUSY || empty($private) || $grant & Acl::PRIVAT);
 		}
 		// do NOT allow users to purge deleted events, if we dont have 'userpurge' enabled
 		if ($access && $needed == Acl::DELETE && $event['deleted'] &&
@@ -1930,7 +1939,8 @@ class calendar_bo
 		$holidays = calendar_holidays::read(
 				!empty($GLOBALS['egw_info']['server']['ical_holiday_url']) ?
 				$GLOBALS['egw_info']['server']['ical_holiday_url'] :
-				$GLOBALS['egw_info']['user']['preferences']['common']['country'], $year);
+				$GLOBALS['egw_info']['user']['preferences']['common']['country'], $year,
+				$GLOBALS['egw_info']['user']['preferences']['common']['lang']);
 
 		// search for birthdays
 		if ($GLOBALS['egw_info']['server']['hide_birthdays'] != 'yes')

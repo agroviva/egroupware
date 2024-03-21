@@ -9,7 +9,7 @@
  */
 
 
-import {css, html} from "@lion/core";
+import {css, html} from "lit";
 import 'lit-flatpickr';
 import {dateStyles} from "./DateStyles";
 import type {Instance} from 'flatpickr/dist/types/instance';
@@ -19,14 +19,10 @@ import flatpickr from "flatpickr";
 import {egw} from "../../jsapi/egw_global";
 import type {HTMLElementWithValue} from "@lion/form-core/types/FormControlMixinTypes";
 import {Et2Textbox} from "../Et2Textbox/Et2Textbox";
-import {Et2ButtonIcon} from "../Et2Button/Et2ButtonIcon";
 import {FormControlMixin} from "@lion/form-core";
 import {LitFlatpickr} from "lit-flatpickr";
 import {Et2InputWidget} from "../Et2InputWidget/Et2InputWidget";
 import shoelace from "../Styles/shoelace";
-
-const textbox = new Et2Textbox();
-const button = new Et2ButtonIcon();
 
 // list of existing localizations from node_modules/flatpicker/dist/l10n directory:
 const l10n = [
@@ -35,7 +31,7 @@ const l10n = [
 	'mn', 'ms', 'my', 'nl', 'no', 'pa', 'pl', 'pt', 'ro', 'ru', 'si', 'sk', 'sl', 'sq', 'sr-cyr', 'sr', 'sv', 'th', 'tr',
 	'uk', 'uz', 'uz_latn', 'vn', 'zh-tw', 'zh',
 ];
-const lang = egw ? <string>egw.preference('lang') || "" : "";
+const lang = egw && egw.preference ? <string>egw.preference('lang') || "" : "";
 // only load localization, if we have one
 if (l10n.indexOf(lang) >= 0)
 {

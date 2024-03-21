@@ -326,7 +326,7 @@ class mail_compose
 		$_contentHasSigID = $_content?array_key_exists('mailidentity',(array)$_content):false;
 		$_contentHasMimeType = $_content? array_key_exists('mimeType',(array)$_content):false;
 
-		// fetch appendix data which is an assistance input value consisiting of json data
+		// fetch appendix data which is an assistance input value consisting of json data
 		if (!empty($_content['appendix_data']))
 		{
 			$appendix_data = json_decode($_content['appendix_data'], true);
@@ -800,7 +800,7 @@ class mail_compose
 				if ($styles)
 				{
 					//error_log($styles);
-					$content['body'] = $styles.$content['body'];
+					$content['body'] = $styles."\n".$content['body'];
 				}
 			}
 		}
@@ -1014,9 +1014,36 @@ class mail_compose
 						$_content[$name]=$content[$name]=$_REQUEST['preset'][$name];
 					}
 					//skip if already processed by "preset Routines"
-					if ($alreadyProcessed[$name]) continue;
-					//error_log(__METHOD__.__LINE__.':'.$name.'->'. $_REQUEST['preset'][$name]);
-					if (!empty($_REQUEST['preset'][$name])) $content[$name] = $_REQUEST['preset'][$name];
+					if ($alreadyProcessed[$name] || empty($_REQUEST['preset'][$name]))
+					{
+						continue;
+					}
+					if ($name === 'body' && !empty($content['body']))
+					{
+						// if preset body has different mimeType the (reply-)body --> convert all to html
+						if ($content['mimeType'] !== $_REQUEST['preset']['mimeType'])
+						{
+							if ($_REQUEST['preset']['mimeType'] === 'plain')
+							{
+								$_REQUEST['preset']['body'] = Mail\Html::convertTextToHtml($_REQUEST['preset']['body']);
+							}
+							else
+							{
+								$content['body'] = '<pre>'.$content['body']."</pre>\n";
+							}
+							$content['mimeType'] = $_REQUEST['preset']['mimeType'] = 'html';
+						}
+						$content['body'] = $_REQUEST['preset']['body'].$content['body'];
+					}
+					else
+					{
+						$content[$name] = $_REQUEST['preset'][$name];
+					}
+				}
+				// if we preset the body, we always want the signature below (independent of user preference for replay or forward!)
+				if (!empty($_REQUEST['preset']['body']))
+				{
+					$insertSigOnTop = 'below';
 				}
 			}
 			// is the to address set already?
@@ -1157,7 +1184,7 @@ class mail_compose
 			}
 			if ($content['mimeType'] === 'html')
 			{
-				$start = "<br/>\n";
+				$start = "<p><br/></p>\n";
 				$before = $disableRuler ? '' : '<hr class="ruler" style="border:1px dotted silver; width:100%;">';
 				$inbetween = '';
 			}
@@ -1165,6 +1192,11 @@ class mail_compose
 			{
 				$before = $disableRuler ? "\r\n" : "\r\n-- \r\n";
 				$start = $inbetween = "\r\n";
+			}
+			// if we already have a body in compose (not reply or forward!), do NOT add an empty line above it
+			if (!empty($content['body']) && !$isReply)
+			{
+				$start = '';
 			}
 			if ($content['mimeType'] === 'html')
 			{
@@ -2251,7 +2283,8 @@ class mail_compose
 		//_debug_array($headers);
 		//error_log(__METHOD__.__LINE__.'->'.array2string($this->mailPreferences['htmlOptions']));
 		try {
-			$bodyParts = $mail_bo->getMessageBody($_uid, ($this->mailPreferences['htmlOptions']?$this->mailPreferences['htmlOptions']:''), $_partID);
+			$bodyParts = $mail_bo->getMessageBody($_uid, $this->mailPreferences['htmlOptions']??'', $_partID,
+				null, false, '', $nul, false);
 		}
 		catch (Mail\Smime\PassphraseMissing $e)
 		{
@@ -2298,7 +2331,7 @@ class mail_compose
 		if($bodyParts['0']['mimeType'] == 'text/html')
 		{
 			$this->sessionData['mimeType'] 	= 'html';
-			if (!empty($styles)) $this->sessionData['body'] .= $styles;
+			if (!empty($styles)) $this->sessionData['body'] .= "\n".$styles."\n";
 			$this->sessionData['body']	.= '<blockquote type="cite">';
 
 			foreach($bodyParts as $i => &$bodyPart)
@@ -2342,11 +2375,8 @@ class mail_compose
 				$this->sessionData['body'] .= "\r\n";
 				$hasSignature = false;
 				// create body new, with good line breaks and indention
-				foreach(explode("\n",$newBody) as $value) {
-					// the explode is removing the character
-					//$value .= 'ee';
-
-					// Try to remove signatures from qouted parts to avoid multiple
+				foreach($newBody ? explode("\n",$newBody) : [] as $value) {
+					// Try to remove signatures from quoted parts to avoid multiple
 					// signatures problem in reply (rfc3676#section-4.3).
 					if ($_mode != 'forward' && ($hasSignature || ($hasSignature = preg_match("/^--\s[\r\n]$/",$value))))
 					{
@@ -2496,11 +2526,6 @@ class mail_compose
 
 		$_mailObject->addHeader('Subject', $_formData['subject']);
 
-		// this should never happen since we come from the edit dialog
-		if (Mail::detect_qp($_formData['body'])) {
-			$_formData['body'] = preg_replace('/=\r\n/', '', $_formData['body']);
-			$_formData['body'] = quoted_printable_decode($_formData['body']);
-		}
 		$disableRuler = false;
 		$signature = $_identity['ident_signature'];
 		$sigAlreadyThere = $this->mailPreferences['insertSignatureAtTopOfMessage']!='no_belowaftersend'?1:0;
@@ -2530,10 +2555,10 @@ class mail_compose
 			case 'html':
 				$body = $_formData['body'];
 
+				static $ruler = '<hr class="ruler"';
 				if (!empty($attachment_links))
 				{
 					// if we have a ruler, replace it with the attachment block
-					static $ruler = '<hr class="ruler"';
 					if (strpos($body, $ruler) !== false)
 					{
 						$body = preg_replace('#'.$ruler.'[^>]*>#', $attachment_links, $body);
@@ -2556,7 +2581,7 @@ class mail_compose
 						($disableRuler ? "\r\n" : "\r\n-- \r\n").
 						$this->convertHTMLToText($signature, true, true));
 
-					$body .= ($disableRuler ?'<br>':'<hr style="border:1px dotted silver; width:90%;">').$signature;
+					$body .= ($disableRuler ?'<p><br/></p>':'<hr style="border:1px dotted silver; width:90%;">').$signature;
 				}
 				else
 				{
@@ -2640,9 +2665,15 @@ class mail_compose
 								break;
 						}
 					}
-					// attach files not for autosaving
-					elseif ($_formData['filemode'] == Vfs\Sharing::ATTACH && !$_autosaving)
+					// attach files not for autosaving, if size-limit is configured and attachment is bigger
+					elseif ($_formData['filemode'] == Vfs\Sharing::ATTACH)
 					{
+						// exclude attachments greater configured size from autosaving
+						if ($_autosaving && !empty(Mail::$mailConfig['autosave_attachment_limit_mb']) &&
+							$attachment['size'] > 1024*1024*Mail::$mailConfig['autosave_attachment_limit_mb'])
+						{
+							continue;
+						}
 						if (isset($attachment['file']) && parse_url($attachment['file'],PHP_URL_SCHEME) == 'vfs')
 						{
 							Vfs::load_wrapper('vfs');
@@ -2734,6 +2765,9 @@ class mail_compose
 	 */
 	public function ajax_saveAsDraft ($content, $action='button[saveAsDraft]')
 	{
+		// release session, as we don't need it and it blocks parallel requests
+		$GLOBALS['egw']->session->commit_session();
+
 		//error_log(__METHOD__.__LINE__.array2string($content)."(, action=$action)");
 		$response = Api\Json\Response::get();
 		$success = true;
@@ -2941,6 +2975,12 @@ class mail_compose
 		$mail_bo	= $this->mail_bo;
 		$mail 		= new Api\Mailer($_acc_id ?: $mail_bo->profileID);
 		$messageIsDraft	=  false;
+
+		// it seems there are mail client ignoring / not displaying text behind the closing style-tag --> add a linebreak there
+		if (strpos($_formData['body'], '</style><') !== false)
+		{
+			$_formData['body'] = str_replace('</style><', "</style>\n<", $_formData['body']);
+		}
 
 		$this->sessionData['mailaccount']	= $_formData['mailaccount'];
 		$this->sessionData['to']	= self::resolveEmailAddressList($_formData['to']);
@@ -3744,9 +3784,19 @@ class mail_compose
 		 // switch regular JSON response handling off
 		Api\Json\Request::isJSONRequest(false);
 
+		$results = array_reduce($results, function ($result, $option)
+		{
+			$value = $option['value'];
+			if(!array_key_exists($value, $result))
+			{
+				$result[$value] = $option;
+			}
+			return $result;
+		},                      []);
+
 		//error_log(__METHOD__.__LINE__.array2string($jsArray));
 		header('Content-Type: application/json; charset=utf-8');
-		echo json_encode($results);
+		echo json_encode(array_values($results));
 		exit();
 	}
 

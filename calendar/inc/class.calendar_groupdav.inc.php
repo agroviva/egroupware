@@ -755,7 +755,7 @@ class calendar_groupdav extends Api\CalDAV\Handler
 		}
 
 		// jsEvent or iCal
-		if (($type=Api\CalDAV::isJSON()))
+		if (($type=Api\CalDAV::isJSON($_SERVER['HTTP_ACCEPT'])) || ($type=Api\CalDAV::isJSON()))
 		{
 			$options['data'] = $this->iCal($event, $user, strpos($options['path'], '/inbox/') !== false ? 'REQUEST' : null, false, null, $type);
 			$options['mimetype'] = Api\CalDAV\JsCalendar::MIME_TYPE_JSEVENT.';charset=utf-8';
@@ -1067,6 +1067,25 @@ class calendar_groupdav extends Api\CalDAV\Handler
 			}
 		}
 
+		// if path not found, check the UID and return "403 Forbidden" if event is deleted or user has not rights to event with same UID
+		if (!isset($oldEvent) && ($events = $handler->icaltoegw($vCalendar)) &&
+			($oldEvents = $this->bo->read(['cal_uid' => $events[0]['uid'], 'cal_reference=0'], null, false, 'server')) !== null)
+		{
+			foreach($oldEvents as $oldEvent)
+			{
+				if (empty($oldEvent['deleted']))
+				{
+					break;
+				}
+			}
+			if (!empty($oldEvent['deleted']))
+			{
+				$this->caldav->log("Event with UID='{$events[0]['uid']}' has already been deleted!");
+				return '403 Forbidden';
+			}
+			// case user has no edit-rights for $oldEvent is handled below
+		}
+
 		if (is_array($oldEvent))
 		{
 			$eventId = $oldEvent['id'];
@@ -1115,7 +1134,14 @@ class calendar_groupdav extends Api\CalDAV\Handler
 					(!$oldEvent['recur_type'] || !($series = self::get_series($oldEvent['uid'], $this->bo))))
 				{
 					if ($this->debug) error_log(__METHOD__."(,,$user) user $user is NOT an attendee!");
-					return '403 Forbidden';
+					$ignore_acl = !empty($GLOBALS['egw_info']['server']['caldav_party_crasher_regexp']) &&
+						preg_match($GLOBALS['egw_info']['server']['caldav_party_crasher_regexp'], $email=Api\Accounts::id2name($user, 'account_email'));
+					if (!$ignore_acl)
+					{
+						$this->caldav->log("Returning '403 Forbidden' as #$user is NOT a participant of the event!");
+						return '403 Forbidden';
+					}
+					$this->caldav->log("Allowing user #$user because email '$email' matches '{$GLOBALS['egw_info']['server']['caldav_party_crasher_regexp']}'");
 				}
 				// update only participant status and alarms of current user
 				if (($events = $handler->icaltoegw($vCalendar)))
@@ -1124,7 +1150,7 @@ class calendar_groupdav extends Api\CalDAV\Handler
 					$master = null;
 					foreach($events as $n => $event)
 					{
-						// for recurrances of event series, we need to read correct recurrence (or if series master is no first event)
+						// for recurrences of event series, we need to read correct recurrence (or if series master is no first event)
 						if ($event['recurrence'] || $n && !$event['recurrence'] || isset($series))
 						{
 							// first try reading (virtual and real) exceptions
@@ -1156,7 +1182,8 @@ class calendar_groupdav extends Api\CalDAV\Handler
 						{
 							if (!$this->bo->set_status($oldEvent['id'], $user, $event['participants'][$user],
 								// real (not virtual) exceptions use recurrence 0 in egw_cal_user.cal_recurrence!
-								$recurrence = $eventId == $oldEvent['id'] ? $event['recurrence'] : 0))
+								$recurrence = $eventId == $oldEvent['id'] ? $event['recurrence'] : 0,
+								$ignore_acl))
 							{
 								if ($this->debug) error_log(__METHOD__."(,,$user) failed to set_status($oldEvent[id], $user, '{$event['participants'][$user]}', $recurrence=".Api\DateTime::to($recurrence).')');
 								return '403 Forbidden';
@@ -1189,6 +1216,11 @@ class calendar_groupdav extends Api\CalDAV\Handler
 					$this->put_response_headers($eventId, $options['path'], '204 No Content', self::$path_attr == 'caldav_name');
 
 					return '204 No Content';
+				}
+				else
+				{
+					$this->caldav->log("Could NOT parse any event(s) from iCal --> returning 400 Bad Request!");
+					return '400 Bad Request';
 				}
 				if ($this->debug && !isset($events)) error_log(__METHOD__."(,,$user) only schedule-tag given for event without participants (only calendar owner) --> handle as regular PUT");
 			}
@@ -1227,7 +1259,7 @@ class calendar_groupdav extends Api\CalDAV\Handler
 		$type = null;
 		if (($is_json=Api\CalDAV::isJSON($type)))
 		{
-			$event = Api\CalDAV\JsCalendar::parseJsEvent($options['content'], $oldEvent ?? [], $type, $method);
+			$event = Api\CalDAV\JsCalendar::parseJsEvent($options['content'], $oldEvent ?? [], $type, $method, $user);
 			$cal_id = $this->bo->save($event);
 		}
 		else
@@ -1570,6 +1602,21 @@ class calendar_groupdav extends Api\CalDAV\Handler
 		$return_no_access = true;	// to allow to check if current use is a participant and reject the event for him
 		$event = $this->_common_get_put_delete('DELETE',$options,$id,$return_no_access);
 
+		/* user has delete-rights, check if we have an external organizer and more participants
+		if ($event && $return_no_access && count($event['participants']) > 2)
+		{
+			foreach($event['participants'] as $uid => $status)
+			{
+				$quantity = $role = null;
+				calendar_so::split_status($status, $quantity, $role);
+				if (!is_numeric($uid) && $role == 'CHAIR') break;
+			}
+			if (!(!is_numeric($uid) && $role == 'CHAIR'))
+			{
+				$return_no_access = false;  // only set status rejected, but do NOT delete the event
+			}
+		}*/
+
 		// no event found --> 404 Not Found
 		if (!is_array($event))
 		{
@@ -1630,15 +1677,31 @@ class calendar_groupdav extends Api\CalDAV\Handler
 	 * the same UID and/or caldav_name as not deleted events and would block access to valid entries
 	 *
 	 * @param string|id $id
-	 * @return array|boolean array with entry, false if no read rights, null if $id does not exist
+	 * @return array|boolean array with entry, false if no read rights or deleted, null if $id does not exist
 	 */
 	function read($id)
 	{
 		if (strpos($column=self::$path_attr,'_') === false) $column = 'cal_'.$column;
 
-		$event = $this->bo->read(array($column => $id, 'cal_deleted IS NULL', 'cal_reference=0'), null, true,
+		$event = $this->bo->read(array($column => $id, 'cal_reference=0'), null, true,
 			$date_format = Api\CalDAV::isJSON() ? 'object' : 'server');
-		if ($event) $event = array_shift($event);	// read with array as 1. param, returns an array of events!
+
+		// read with array as 1. param, returns an array of events!
+		// as we no longer return only NOT-deleted events, there might be more
+		if ($event)
+		{
+			foreach ($event as $event)
+			{
+				if (empty($event['cal_deleted'])) break;
+			}
+			// the above prefers a NOT deleted event over deleted noes, thought all might be deleted
+			if (!empty($event['cal_deleted']))
+			{
+				$retval = false;
+				if ($this->debug > 0) error_log(__METHOD__."($id) event has been deleted returning ".array2string($retval));
+				return $retval;
+			}
+		}
 
 		if (!($retval = $this->bo->check_perms(calendar_bo::ACL_FREEBUSY,$event, 0, 'server')) &&
 			// above can be true, if current user is not in master but just a recurrence

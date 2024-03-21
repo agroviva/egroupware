@@ -169,13 +169,16 @@ class Auth
 		}
 
 		// now we need a (not yet authenticated) session so SAML / auth source selected "survives" eg. the SAML redirects
-		if (!empty($type) && !Session::get_sessionid())
+		if (!Session::get_sessionid() || session_status() === PHP_SESSION_NONE)
 		{
-			session_start();
+			if (session_status() === PHP_SESSION_NONE)
+			{
+				session_start();
+			}
 			Session::egw_setcookie(Session::EGW_SESSION_NAME, session_id());
 		}
 
-		$backend = self::backend($type ?? null, false);
+		$backend = self::backend($type ?? null, !empty($type));
 
 		return $backend instanceof  Auth\BackendSSO ? $backend->login() : null;
 	}
@@ -597,7 +600,7 @@ class Auth
 		foreach(self::$crypt_params as $type => $params)
 		{
 			list(,$prefix, $random, $postfix) = $params;
-			list(,$d) = explode('$', $prefix);
+			list(,$d) = explode('$', $prefix)+[null,null];
 			if ($dollar === $d || !$dollar && ($first[0] === $prefix[0] || $first[0] !== '_' && !$prefix))
 			{
 				$len = !$postfix ? strlen($prefix)+$random : strlen($prefix.$salt.$postfix);

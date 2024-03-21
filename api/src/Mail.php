@@ -49,6 +49,21 @@ class Mail
 	var $profileID = 0;
 
 	/**
+	 * @var int
+	 */
+	var $accountid;
+
+	/**
+	 * @var array
+	 */
+	var $sessionData;
+
+	/**
+	 * @var Horde_Idna
+	 */
+	var $idna2;
+
+	/**
 	 * delimiter - used to separate acc_id from mailbox / folder-tree-structure
 	 *
 	 * @var string
@@ -195,12 +210,13 @@ class Mail
 	 * @param int $_profileID = 0
 	 * @param boolean $_validate = true - flag wether the profileid should be validated or not, if validation is true, you may receive a profile
 	 *                                  not matching the input profileID, if we can not find a profile matching the given ID
-	 * @param mixed boolean/object $_icServerObject - if object, return instance with object set as icServer
+	 * @param boolean|Mail\Imap $_icServerObject - if object, return instance with object set as icServer
 	 *												  immediately, if boolean === true use oldImapServer in constructor
 	 * @param boolean $_reuseCache = null if null it is set to the value of $_restoreSession
+	 * @param int|null $called_for =null can be set to a different account_id, to instanciate an acc_id not belonging to the current user
 	 * @return Mail
 	 */
-	public static function getInstance($_restoreSession=true, &$_profileID=0, $_validate=true, $_oldImapServerObject=false, $_reuseCache=null)
+	public static function getInstance($_restoreSession=true, &$_profileID=0, $_validate=true, $_oldImapServerObject=false, $_reuseCache=null, int $called_for=null)
 	{
 		//$_restoreSession=false;
 		if (!isset($_reuseCache)) $_reuseCache = $_restoreSession;
@@ -245,7 +261,7 @@ class Mail
 		}
 		if ($_profileID != 0 && $_validate)
 		{
-			$profileID = self::validateProfileID($_profileID);
+			$profileID = self::validateProfileID($_profileID, $called_for);
 			if ($profileID != $_profileID)
 			{
 				if (self::$debug)
@@ -263,7 +279,7 @@ class Mail
 		//error_log(__METHOD__.' ('.__LINE__.') '.' RestoreSession:'.$_restoreSession.' ProfileId:'.$_profileID.' called from:'.function_backtrace());
 		if ($_profileID && (!isset(self::$instances[$_profileID]) || $_restoreSession===false))
 		{
-			self::$instances[$_profileID] = new Mail('utf-8',$_restoreSession,$_profileID,false,$_reuseCache);
+			self::$instances[$_profileID] = new Mail('utf-8', $_restoreSession, $_profileID,false, $_reuseCache, $called_for);
 		}
 		else
 		{
@@ -361,14 +377,15 @@ class Mail
 	 * - non-empty imap-username
 	 *
 	 * @param int $_acc_id = 0
+	 * @param int|null $called_for =null can be set to a different account_id, to instanciate an acc_id not belonging to the current user
 	 * @return int validated acc_id -> either acc_id given, or first valid one
 	 */
-	public static function validateProfileID($_acc_id=0)
+	public static function validateProfileID($_acc_id=0, int $called_for=null)
 	{
 		if ($_acc_id)
 		{
 			try {
-				$account = Mail\Account::read($_acc_id);
+				$account = Mail\Account::read($_acc_id, $called_for);
 				if ($account->is_imap())
 				{
 					return $_acc_id;
@@ -400,15 +417,16 @@ class Mail
 	 *
 	 * @param string $_displayCharset = 'utf-8'
 	 * @param boolean $_restoreSession = true
-	 * @param int $_profileID = 0 if not nummeric, we assume we only want an empty class object
-	 * @param boolean $_oldImapServerObject = false
+	 * @param int $_profileID = 0 if not numeric, we assume we only want an empty class object
+	 * @param boolean|Mail\Imap $_oldImapServerObject = false
 	 * @param boolean $_reuseCache = null if null it is set to the value of $_restoreSession
+	 * @param int|null $called_for =null can be set to a different account_id, to instanciate an acc_id not belonging to the current user
 	 */
-	private function __construct($_displayCharset='utf-8',$_restoreSession=true, $_profileID=0, $_oldImapServerObject=false, $_reuseCache=null)
+	private function __construct($_displayCharset='utf-8',$_restoreSession=true, $_profileID=0, $_oldImapServerObject=false, $_reuseCache=null, int $called_for=null)
 	{
 		if (!isset($_reuseCache)) $_reuseCache = $_restoreSession;
 		if (!empty($_displayCharset)) self::$displayCharset = $_displayCharset;
-		// not nummeric, we assume we only want an empty class object
+		// not numeric, we assume we only want an empty class object
 		if (!is_numeric($_profileID)) return;
 		if ($_restoreSession)
 		{
@@ -423,11 +441,11 @@ class Mail
 		if (!$_reuseCache) $this->forcePrefReload($_profileID,!$_reuseCache);
 		try
 		{
-			$this->profileID = self::validateProfileID($_profileID);
+			$this->profileID = self::validateProfileID($_profileID, $called_for);
 			$this->accountid	= $GLOBALS['egw_info']['user']['account_id'];
 
 			//error_log(__METHOD__.' ('.__LINE__.') '." ProfileID ".$this->profileID.' called from:'.function_backtrace());
-			$acc = Mail\Account::read($this->profileID);
+			$acc = Mail\Account::read($this->profileID, $called_for);
 		}
 		catch (\Exception $e)
 		{
@@ -1159,12 +1177,12 @@ class Mail
 	 *
 	 * @param folderName string the foldername
 	 * @param ignoreStatusCache bool ignore the cache used for counters
-	 *
+	 * @param bool $getModSeq true: query highestmodseq (returned in uppercase!)
 	 * @return array
 	 *
 	 * @throws Exception
 	 */
-	function _getStatus($folderName,$ignoreStatusCache=false)
+	function _getStatus($folderName,$ignoreStatusCache=false,bool $getModSeq=false)
 	{
 		static $folderStatus = null;
 		if (!$ignoreStatusCache && isset($folderStatus[$this->icServer->ImapServerId][$folderName]))
@@ -1174,7 +1192,7 @@ class Mail
 		}
 		try
 		{
-			$folderStatus[$this->icServer->ImapServerId][$folderName] = $this->icServer->getStatus($folderName,$ignoreStatusCache);
+			$folderStatus[$this->icServer->ImapServerId][$folderName] = $this->icServer->getStatus($folderName,$ignoreStatusCache,$getModSeq);
 		}
 		catch (\Exception $e)
 		{
@@ -1188,13 +1206,14 @@ class Mail
 	 *
 	 * returns an array information about the imap folder, may be used as  wrapper to retrieve results from cache
 	 *
-	 * @param _folderName string the foldername
-	 * @param ignoreStatusCache bool ignore the cache used for counters
-	 * @param basicInfoOnly bool retrieve only names and stuff returned by getMailboxes
-	 * @param fetchSubscribedInfo bool fetch Subscribed Info on folder
+	 * @param $_folderName string the foldername
+	 * @param $ignoreStatusCache bool ignore the cache used for counters
+	 * @param $basicInfoOnly bool retrieve only names and stuff returned by getMailboxes
+	 * @param $fetchSubscribedInfo bool fetch Subscribed Info on folder
+	 * @param bool $getModSeq true: return highestmodseq with key "highestmodseq"
 	 * @return array|false
 	 */
-	function getFolderStatus($_folderName,$ignoreStatusCache=false,$basicInfoOnly=false,$fetchSubscribedInfo=true)
+	function getFolderStatus($_folderName,$ignoreStatusCache=false,$basicInfoOnly=false,$fetchSubscribedInfo=true, bool $getModSeq=false)
 	{
 		if (self::$debug) error_log(__METHOD__.' ('.__LINE__.') '." called with:$_folderName,$ignoreStatusCache,$basicInfoOnly");
 		if (!is_string($_folderName) || empty($_folderName)||(isset(self::$profileDefunct[$this->profileID]) && strlen(self::$profileDefunct[$this->profileID])))
@@ -1243,7 +1262,7 @@ class Mail
 		if($ignoreStatusCache||!$folderInfo|| !is_array($folderInfo)) {
 			try
 			{
-				$folderInfo = $this->_getStatus($_folderName,$ignoreStatusCache);
+				$folderInfo = $this->_getStatus($_folderName,$ignoreStatusCache,$getModSeq);
 			}
 			catch (\Exception $e)
 			{
@@ -1280,6 +1299,10 @@ class Mail
 		}
 		if ($folderInfo) $folderBasicInfo[$this->profileID][$_folderName]=$retValue;
 		//error_log(__METHOD__.' ('.__LINE__.') '.' '.$_folderName.array2string($retValue['attributes']));
+		if ($getModSeq)
+		{
+			$retValue['highestmodseq'] = $folderInfo['HIGHESTMODSEQ'] ?? 0;
+		}
 		if ($basicInfoOnly || (isset($retValue['attributes']) && stripos(array2string($retValue['attributes']),'noselect')!==false))
 		{
 			return $retValue;
@@ -1314,12 +1337,16 @@ class Mail
 		try
 		{
 			//$folderStatus = $this->_getStatus($_folderName,$ignoreStatusCache);
-			$folderStatus = $this->getMailBoxCounters($_folderName,false);
+			$folderStatus = $this->getMailBoxCounters($_folderName,false, empty($retValue['highestmodseq']) && $getModSeq);
 			$retValue['messages']		= $folderStatus['MESSAGES'];
 			$retValue['recent']		= $folderStatus['RECENT'];
 			$retValue['uidnext']		= $folderStatus['UIDNEXT'];
 			$retValue['uidvalidity']	= $folderStatus['UIDVALIDITY'];
 			$retValue['unseen']		= $folderStatus['UNSEEN'];
+			if (empty($retValue['highestmodseq']) && $getModSeq)
+			{
+				$retValue['highestmodseq'] = $folderStatus['HIGHESTMODSEQ'];
+			}
 			if (//$retValue['unseen']==0 &&
 				(isset($this->mailPreferences['trustServersUnseenInfo']) && // some servers dont serve the UNSEEN information
 				$this->mailPreferences['trustServersUnseenInfo']==false) ||
@@ -1488,7 +1515,9 @@ class Mail
 		}
 		else
 		{
-			$sortResult = (is_array($_thisUIDOnly) ? $_thisUIDOnly:(array)$_thisUIDOnly);
+			$sortResult = (array)$_thisUIDOnly;
+			// we must return a total: if we return only certain UIDs, the total is the number of UIDs given
+			$total = count($sortResult);
 		}
 
 
@@ -1595,13 +1624,13 @@ class Mail
 				} /*else $sent_not = "";*/
 				//error_log(__METHOD__.' ('.__LINE__.') '.array2string($headerObject));
 				$headerObject['DATE'] = $headerForPrio['DATE'];
-				$headerObject['SUBJECT'] = (is_array($headerForPrio['SUBJECT'])?$headerForPrio['SUBJECT'][0]:$headerForPrio['SUBJECT']);
-				$headerObject['FROM'] = (array)($headerForPrio['FROM']?$headerForPrio['FROM']:($headerForPrio['REPLY-TO']?$headerForPrio['REPLY-TO']:$headerForPrio['RETURN-PATH']));
-				$headerObject['TO'] = (array)$headerForPrio['TO'];
+				$headerObject['SUBJECT'] = is_array($headerForPrio['SUBJECT'] ?? null) ? $headerForPrio['SUBJECT'][0] : ($headerForPrio['SUBJECT']??null);
+				$headerObject['FROM'] = (array)($headerForPrio['FROM']?:($headerForPrio['REPLY-TO']?:$headerForPrio['RETURN-PATH']));
+				$headerObject['TO'] = (array)($headerForPrio['TO'] ?? []);
 				$headerObject['CC'] = isset($headerForPrio['CC'])?(array)$headerForPrio['CC']:array();
 				$headerObject['BCC'] = isset($headerForPrio['BCC'])?(array)$headerForPrio['BCC']:array();
 				$headerObject['REPLY-TO'] = isset($headerForPrio['REPLY-TO'])?(array)$headerForPrio['REPLY-TO']:array();
-				$headerObject['PRIORITY'] = isset($headerForPrio['X-PRIORITY'])?$headerForPrio['X-PRIORITY']:null;
+				$headerObject['PRIORITY'] = $headerForPrio['X-PRIORITY']??null;
 				foreach (array('FROM','TO','CC','BCC','REPLY-TO') as $key)
 				{
 					$address = array();
@@ -3381,13 +3410,14 @@ class Mail
 	 * function to retrieve the counters for a given folder
 	 * @param string $folderName
 	 * @param boolean $_returnObject return the counters as object rather than an array
+	 * @param bool $getModSeq true: query highestmodseq (returned in uppercase!)
 	 * @return mixed false or array of counters array(MESSAGES,UNSEEN,RECENT,UIDNEXT,UIDVALIDITY) or object
 	 */
-	function getMailBoxCounters($folderName,$_returnObject=true)
+	function getMailBoxCounters($folderName,$_returnObject=true, bool $getModSeq=false)
 	{
 		try
 		{
-			$folderStatus = $this->icServer->getMailboxCounters($folderName);
+			$folderStatus = $this->icServer->getMailboxCounters($folderName, $getModSeq);
 			//error_log(__METHOD__.' ('.__LINE__.') '.$folderName.": FolderStatus:".array2string($folderStatus).function_backtrace());
 		}
 		catch (\Exception $e)
@@ -3395,15 +3425,22 @@ class Mail
 			if (self::$debug) error_log(__METHOD__." returned FolderStatus for Folder $folderName:".$e->getMessage());
 			return false;
 		}
-		if(is_array($folderStatus)) {
-			if ($_returnObject===false) return $folderStatus;
+		if(is_array($folderStatus))
+		{
+			if (!$_returnObject)
+			{
+				return $folderStatus;
+			}
 			$status =  new \stdClass;
 			$status->messages   = $folderStatus['MESSAGES'];
 			$status->unseen     = $folderStatus['UNSEEN'];
 			$status->recent     = $folderStatus['RECENT'];
 			$status->uidnext        = $folderStatus['UIDNEXT'];
 			$status->uidvalidity    = $folderStatus['UIDVALIDITY'];
-
+			if ($getModSeq)
+			{
+				$status->highestmodseq    = $folderStatus['HIGHESTMODSEQ'];
+			}
 			return $status;
 		}
 		return false;
@@ -4924,9 +4961,11 @@ class Mail
 	 * @param boolean $_preserveSeen flag to preserve the seenflag by using body.peek
 	 * @param string $_folder folder to work on
 	 * @param Horde_Mime_part& $calendar_part =null on return calendar-part or null, if there is none
+	 * @param bool $output_no_body true: if we have no "real" body, but a PDF or image, output it to display, false: return empty body
 	 * @return array containing the message body, mimeType and charset
 	 */
-	function getMessageBody($_uid, $_htmlOptions='', $_partID=null, Horde_Mime_Part $_structure=null, $_preserveSeen = false, $_folder = '', &$calendar_part=null)
+	function getMessageBody($_uid, $_htmlOptions='', $_partID=null, Horde_Mime_Part $_structure=null, $_preserveSeen = false,
+	                        $_folder = '', &$calendar_part=null, bool $output_no_body=true)
 	{
 		if (self::$debug) echo __METHOD__."$_uid, $_htmlOptions, $_partID<br>";
 		if($_htmlOptions != '') {
@@ -4961,6 +5000,14 @@ class Mail
 			$_structure->contentTypeMap();
 			$_structure = $_structure->getPart($_partID);
 			//_debug_array($_structure->getMimeId()); exit;
+		}
+
+		// if message is just a pdf, return it to browser to display
+		if ($output_no_body && ($_structure->getType() === 'application/pdf' || $_structure->getPrimaryType() === 'image'))
+		{
+			header('Content-Type: '.$_structure->getType());
+			echo $this->getAttachment($_uid, $_partID ?? '1', 0, true, $_folder)->getContents();
+			exit();
 		}
 
 		switch($_structure->getPrimaryType())
@@ -5050,7 +5097,7 @@ class Mail
 
 	/**
 	 * normalizeBodyParts - function to gather and normalize all body Information
-	 * as we may recieve a bodyParts structure from within getMessageBody nested deeper than expected
+	 * as we may receive a bodyParts structure from within getMessageBody nested deeper than expected
 	 * so this is used to normalize the output, so we are able to rely on our expectation
 	 * @param _bodyParts - Body Array
 	 * @return array - a normalized Bodyarray
@@ -6174,6 +6221,36 @@ class Mail
 	}
 
 	/**
+	 * Check if part is binary e.g. a PDF or an image and claims not to be transfer-encoded --> fix it
+	 *
+	 * This works under the assumption, that no one really sends binary data unencoded through mail!
+	 * Therefore, we assume it must be already base64 encoded, just the header was forgotten.
+	 *
+	 * This violates the mime-rfc, which states explicit that no Content-Transfer-Encoding header means "binary"!
+	 * Horde_Mime_Part does NOT allow to check if we have no Content-Transfer-Type header, or it has the value "binary".
+	 *
+	 * Another approach would be to check the data-stream, if it is really base64 encoded or not ...
+	 *
+	 * Some broken clients e.g. SAP Netweaver sends mails containing only a base64 decoded PDF, but set NO Content-Transfer-Type: base64.
+	 *
+	 * @param Horde_Mime_Part $part
+	 * @return bool true: part needed fixing AND is base64 encoded, false: no need to fix the part
+	 */
+	public static function fixBinaryPart(Horde_Mime_Part $part)
+	{
+		// if we have no text body, but only a PDF or an image AND transfer-encoding is NOT base64,
+		// set binary, as it's already base64 transfer-encoded but lacks the necessary header
+		if (($part->getType() === 'application/pdf' || $part->getPrimaryType() === 'image') &&
+			// hack to read protected $structure->_transfer_encoding
+			unserialize($part->serialize())[9] !== 'base64')
+		{
+			$part->setTransferEncoding('binary', ['send' => true]);
+			return true;
+		}
+		return false;
+	}
+
+	/**
 	 * Fetch and add contents to a part
 	 *
 	 * To get contents you use $part->getContents();
@@ -6191,10 +6268,13 @@ class Mail
 		$encoding = null;
 		$fetchAsBinary = true;
 		if ($_mimetype && strtolower($_mimetype)=='message/rfc822') $fetchAsBinary = false;
+
+		$need_base64 = self::fixBinaryPart($part);
+
 		// we need to set content on structure to decode transfer encoding
 		$part->setContents(
 			$this->getBodyPart($_uid, $part->getMimeId(), null, $_preserveSeen, $_stream, $encoding, $fetchAsBinary),
-			array('encoding' => (!$fetchAsBinary&&!$encoding?'8bit':$encoding)));
+				array('encoding' => $need_base64 ? 'base64' : (!$fetchAsBinary&&!$encoding?'8bit':$encoding)));
 
 		return $part;
 	}
@@ -6209,7 +6289,7 @@ class Mail
 	 * @param string _body body part of message, only used if _header is NO resource
 	 * @param string _flags = '\\Recent'the imap flags to set for the saved message
 	 *
-	 * @return the id of the message appended or exception
+	 * @return int id of the message appended or exception
 	 * @throws Exception\WrongUserinput
 	 */
 	function appendMessage($_folderName, $_header, $_body, $_flags='\\Recent')
@@ -7295,6 +7375,8 @@ class Mail
 				$structure->setTransferEncoding('8bit');
 				$structure->setCharset('utf-8');
 			}
+			self::fixBinaryPart($structure);
+
 			$mailer->setBasePart($structure);
 			//error_log(__METHOD__.__LINE__.':'.array2string($structure));
 

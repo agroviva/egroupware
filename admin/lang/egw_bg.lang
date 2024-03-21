@@ -10,17 +10,23 @@
 %1 category(s) %2	admin	bg	%1 категория(и) %2
 %1 category(s) %2, %3 failed because of insufficent rights !!!	admin	bg	%1 категория(и) %2, %3 отпада поради недостатъчни права!!!
 %1 class not instanciated	admin	bg	%1 клас не е представен
+%1 entries deleted	admin	bg	%1 изтрити записи
 %1 entries deleted.	admin	bg	% 1 записа бяха изтрити.
 %1 group %2	admin	bg	% 1 група % 2
 %1 is no command!	admin	bg	% 1 не е "команда"!
-%1 log entries deleted.	admin	bg	% записи за регистрация са изтрити.
+%1 log entries deleted.	admin	bg	%1 записи за регистрация са изтрити.
+%1 mail credentials deleted	admin	bg	%1 изтрити пълномощни за поща
 %1 not found or not executable !!!	admin	bg	% 1 не е намерен или не е изпълним!
 %1 phrases saved.	admin	bg	% 1 запазени фрази.
 %1 rights for %2 and applications %3	admin	bg	% 1 има права за % 2 и приложение(я)% 3.
 %1 run rights for applications	admin	bg	%1 има права за приложенията
+%1 sessions killed	admin	bg	%1 убити сесии.
+%1 successful	admin	bg	%1 успешно
+%1 token %2.	admin	bg	%1 токен %2.
 %1 user %2	admin	bg	% 1 потребител % 2
 (de)activate mail accounts	admin	bg	(де)активиране на имейл акаунти
 (default no, leave it off if you dont use it)	admin	bg	По подразбиране = Не, остави го изключен, ако не се ползва
+(imapclass must support this feature by querying the corresponding config value and pass it as defaultquota to the imapserver)	admin	bg	(imapclass трябва да поддържа тази функция чрез запитване за съответната стойност на конфигурацията и да я предаде като квота по подразбиране на IMAP сървъра)
 (no subject)	admin	bg	(без тема)
 (stored password will not be shown here)	admin	bg	Съхранената парола няма да бъде показана тук!
 (to install new applications use<br><a href="setup/" target="setup">setup</a> [manage applications] !!!)	admin	bg	За инсталиране на нови приложения използвайте <br><a href="setup/" target="setup">Setup</a> [Manage Applications]!
@@ -33,6 +39,7 @@
 6 month	admin	bg	6 месеца
 access by	admin	bg	Достъпен от
 access control	admin	bg	Контрол на достъпа
+access token revoked.	admin	bg	Токенът за достъп е отнет.
 accesslog and bruteforce defense	admin	bg	AccessLog и BruteForce защита
 account	admin	bg	Акаунт
 account "%1" has no email address --> not notified!	admin	bg	Акаунтът "% 1" няма имейл адрес -> не е уведомен!
@@ -53,6 +60,7 @@ account preferences	admin	bg	Преференции на акаунти
 account saved.	admin	bg	Акаунтът е запазен.
 account-id's have to be integers!	admin	bg	ID-то на акаунта трябва да е с цели числа!
 acl added.	admin	bg	ACL е добавен.
+acl csv export	admin	bg	Експорт на ACL CSV
 acl deleted.	admin	bg	ACL е изтрит.
 acl entry deleted.	admin	bg	ACL записът е изтрит.
 acl entry not found!	admin	bg	ACL записът не е намерен!
@@ -98,14 +106,20 @@ advanced options	admin	bg	Разширени опции
 aliases	admin	bg	Псевдоними
 all categories	admin	bg	Всички категории
 apply the changes	admin	bg	Прилагане на промените
+checking push (green for success or red for failure)	admin	bg	Проверка на PUSH (зелено = ОК, червено = не е ОК)
 country	admin	bg	Държава
 created	admin	bg	Създаден
+custom 1	admin	bg	Потребителски 1
+custom 2	admin	bg	Потребителски 2
+custom 3	admin	bg	Потребителски 3
 custom fields	admin	bg	Полета по избор
 day	admin	bg	Ден
 deleted	admin	bg	Изтрит
 event details follow	admin	bg	Следват подробности за събитието
 exists	admin	bg	Съществува
 global categories	common	bg	Глобални категории
+last updated	admin	bg	Последна актуализация
+leave empty to use oauth, if supported	admin	bg	Оставете празно, за да използвате OAuth, ако се поддържа
 manage mapping	admin	bg	Управление на съответствията
 modified	admin	bg	Редактирано
 month	admin	bg	Месец
@@ -126,3 +140,6 @@ start	admin	bg	Старт
 translation	admin	bg	Превод
 two weeks	admin	bg	две седмици
 updated	admin	bg	Актуализиран
+user-agent	admin	bg	User-Agent
+using fallback via regular json requests	admin	bg	Използване на резервен вариант чрез обикновени JSON заявки
+using native swoole push	admin	bg	Използване на native Swoole Push

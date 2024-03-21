@@ -77,6 +77,7 @@ class Script
 	{
 		$this->extensions = [
 			'vacation' => $connection->hasExtension('vacation'),
+			'vacation-seconds' => $connection->hasExtension('vacation-seconds'),
 			'regex' => $connection->hasExtension('regex'),
 			'enotify' => $connection->hasExtension('enotify'),
 			'body' => $connection->hasExtension('body'),
@@ -276,7 +277,11 @@ class Script
 
 		if (!$this->extensions['vacation']) $this->vacation = false;
 
-		$newscriptbody = "";
+		// for vacation with redirect we need to keep track were the mail goes, to add an explicit keep
+		if ($this->extensions['variables'] && $this->vacation)
+		{
+			$newscriptbody = 'set "action" "inbox";'."\n\n";
+		}
 		$continue = 1;
 
 		foreach ($this->rules as $rule) {
@@ -405,7 +410,16 @@ class Script
 				if (preg_match("/flags/i",$rule['action'])) {
 					$newruletext .= "addflag \"".$rule['action_arg']."\";";
 				}
-				if ($rule['keep']) $newruletext .= "\n\tkeep;";
+				if ($rule['keep'])
+				{
+					$newruletext .= "\n\tkeep;";
+				}
+				// for vacation with redirect we need to keep track were the mail goes, to NOT add an explicit keep
+				elseif ($this->extensions['variables'] && $this->vacation &&
+					preg_match('/(folder|reject|address|discard)/', $rule['action']))
+				{
+					$newruletext .= "\n\tset \"action\" \"$rule[action]\";";
+				}
 				if (!$rule['unconditional']) $newruletext .= "\n}";
 
 				$continue = 0;
@@ -421,7 +435,7 @@ class Script
 
 		if ($this->vacation) {
 			$vacation = $this->vacation;
-			if (!$vacation['days']) $vacation['days'] = $default->vacation_days ?: '';
+			if ((string)$vacation['days'] === '' || $vacation['days'] < 0) $vacation['days'] = $default->vacation_days ?: 3;
 			if (!$vacation['text']) $vacation['text'] = $default->vacation_text ?: '';
 			if (!$vacation['status']) $vacation['status'] = 'on';
 
@@ -468,11 +482,22 @@ class Script
 					{
 						$vac_rule .= "\tredirect \"" . trim($addr) . "\";\n";
 					}
-					$vac_rule .= "\tkeep;\n}\n";
+					// if there is no other action e.g. fileinto before, we need to add an explicit keep, as the implicit on is canceled by the vaction redirect!
+					if ($this->extensions['variables']) $vac_rule .= "\tif string :is \"\${action}\" \"inbox\" {\n";
+					$vac_rule .= "\t\tkeep;\n";
+					if ($this->extensions['variables']) $vac_rule .= "\t}\n";
+					$vac_rule .= "}\n";
 				}
 				if (!isset($vacation['modus']) || $vacation['modus'] !== 'store')
 				{
-					$vac_rule .= "vacation :days " . $vacation['days'];
+					if ($vacation['days'])
+					{
+						$vac_rule .= "vacation :days " . $vacation['days'];
+					}
+					else
+					{
+						$vac_rule .= "vacation :seconds 1";
+					}
 					$first = 1;
 					if (!empty($vacation['addresses'][0]))
 					{
@@ -572,7 +597,7 @@ class Script
 			if ($this->extensions['regex'] && $regexused) $newscripthead .= ",\"regex\"";
 			if ($rejectused) $newscripthead .= ",\"reject\"";
 			if ($this->vacation && $vacation_active) {
-				$newscripthead .= ",\"vacation\"";
+				$newscripthead .= (string)$this->vacation['days'] === '0' ? ',"vacation-seconds"' : ',"vacation"';
 			}
 			if ($this->extensions['body']) $newscripthead .= ",\"body\"";
 			if ($this->extensions['date']) $newscripthead .= ",\"date\"";
@@ -585,9 +610,10 @@ class Script
 		} else {
 			// no active rules, but might still have an active vacation rule
 			$closeRequired = false;
-			if ($this->vacation && $vacation_active)
+			if ($this->vacation)
 			{
-				$newscripthead .= "require [\"vacation\"";
+				$newscripthead .= 'require['.((string)$this->vacation['days'] === '0' ? '"vacation-seconds"' : '"vacation"');
+				if ($this->extensions['variables']) $newscripthead .= ',"variables"';
 				if ($this->extensions['regex'] && $regexused) $newscripthead .= ",\"regex\"";
 				if ($this->extensions['date']) $newscripthead .= ",\"date\"";
 				if ($this->extensions['relational']) $newscripthead .= ",\"relational\"";

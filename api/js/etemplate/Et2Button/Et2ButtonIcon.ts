@@ -14,7 +14,7 @@ import '../Et2Image/Et2Image';
 import {SlIconButton} from "@shoelace-style/shoelace";
 import {ButtonMixin} from "./ButtonMixin";
 import shoelace from "../Styles/shoelace";
-import {css} from "@lion/core";
+import {css} from "lit";
 
 
 export class Et2ButtonIcon extends ButtonMixin(Et2InputWidget(SlIconButton))
@@ -43,25 +43,27 @@ export class Et2ButtonIcon extends ButtonMixin(Et2InputWidget(SlIconButton))
 		{
 			this.src = this.egw().image(new_image);
 		}
-		if(new_image && !this.src)
+
+		// For some reason setting it directly does not show the image
+		this.updateComplete.then(() =>
 		{
-			this.__name = new_image;
-		}
+			const icon = this.shadowRoot.querySelector('sl-icon');
+			icon.id = "";
+			if(new_image && !this.src)
+			{
+				icon.src = "";
+				icon.name = new_image;
+			}
+			else
+			{
+				icon.name = "";
+			}
+		});
 	}
 
 	get image()
 	{
 		return this.src || this.name;
-	}
-
-	set name(name)
-	{
-		// No - use image to avoid conflicts between our icons & SlIconButton's image/url loading
-	}
-
-	get name()
-	{
-		return super.name;
 	}
 }
 

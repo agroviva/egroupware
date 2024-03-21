@@ -19,7 +19,7 @@ use EGroupware\Api\CalDAV\Principals;
 // explicit import non-namespaced classes
 require_once(__DIR__.'/WebDAV/Server.php');
 
-use EGroupware\Api\Contacts\JsContactParseException;
+use EGroupware\Api\CalDAV\JsParseException;
 use HTTP_WebDAV_Server;
 use calendar_hooks;
 
@@ -1043,7 +1043,7 @@ class CalDAV extends HTTP_WebDAV_Server
 	 */
 	function PATCH(array &$options)
 	{
-		if (!preg_match('#^application/([^; +]+\+)?json#', $_SERVER['HTTP_CONTENT_TYPE']))
+		if (!self::isJSON())
 		{
 			return '501 Not implemented';
 		}
@@ -1104,6 +1104,11 @@ class CalDAV extends HTTP_WebDAV_Server
 		}
 		if (($handler = $this->app_handler($app)))
 		{
+			// handle links for all apps supporting links
+			if (preg_match('#/'.$app.'/'.$id.'/links/?$#', $options['path']) && self::isJSON())
+			{
+				return $handler->getLinks($options, $id);
+			}
 			return $handler->get($options,$id,$user);
 		}
 		error_log(__METHOD__."(".array2string($options).") 501 Not Implemented");
@@ -1156,8 +1161,11 @@ class CalDAV extends HTTP_WebDAV_Server
 				'address-data' => self::mkprop(self::CARDDAV, 'address-data', '')
 			] : ($is_calendar ? [
 				'calendar-data' => self::mkprop(self::CALDAV, 'calendar-data', ''),
-			] : 'all'),
+			] : [
+				'data' => self::mkprop(self::CALDAV, 'data', '')
+			]),
 			'other' => [],
+			'root' => ['name' => null],
 		);
 
 		// sync-collection report via GET parameter sync-token
@@ -1174,10 +1182,10 @@ class CalDAV extends HTTP_WebDAV_Server
 			}
 		}
 
-		// ToDo: client want data filtered
+		// client want data filtered
 		if (isset($_GET['filters']))
 		{
-
+			$propfind_options['filters'] = $_GET['filters'];
 		}
 
 		// properties to NOT get the default address-data for addressbook-collections and "all" for the rest
@@ -1197,12 +1205,20 @@ class CalDAV extends HTTP_WebDAV_Server
 		{
 			return $ret;	// no collection
 		}
+		// nicer JSON formatting for application/pretty+json only
+		$tab = $nl = $sp = '';
+		if (strpos($_SERVER['HTTP_ACCEPT'], 'application/pretty+json') !== false)
+		{
+			$tab = "\t";
+			$nl = "\n";
+			$sp = ' ';
+		}
 		// set start as prefix, to no have it in front of exceptions
-		$prefix = "{\n\t\"responses\": {\n";
+		$prefix = '{'.$nl.$tab.'"responses":'.$sp.'{'.$nl;
 		foreach($files['files'] as $resource)
 		{
 			$path = $resource['path'];
-			echo $prefix.json_encode($path, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).': ';
+			echo $prefix.json_encode($path, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).':'.$sp;
 			if (!isset($resource['props']))
 			{
 				echo 'null';    // deleted in sync-report
@@ -1222,22 +1238,22 @@ class CalDAV extends HTTP_WebDAV_Server
 				}
 				echo self::json_encode($props, $pretty);
 			}
-			$prefix = ",\n";
+			$prefix = ",$nl";
 		}
 		// happens with an empty response
-		if ($prefix !== ",\n")
+		if ($prefix !== ",$nl")
 		{
 			echo $prefix;
-			$prefix = ",\n";
+			$prefix = ",$nl";
 		}
-		echo "\n\t}";
+		echo "$nl$tab}";
 		// add sync-token and more-results to response
 		if (isset($files['sync-token']))
 		{
-			echo $prefix."\t".'"sync-token": '.json_encode(!is_callable($files['sync-token']) ? $files['sync-token'] :
+			echo $prefix.$tab.'"sync-token": '.json_encode(!is_callable($files['sync-token']) ? $files['sync-token'] :
 				call_user_func_array($files['sync-token'], (array)$files['sync-token-params']), JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
 		}
-		echo "\n}";
+		echo "$nl}";
 
 		// exit now, so WebDAV::GET does NOT add Content-Type: application/octet-stream
 		exit;
@@ -1262,7 +1278,7 @@ class CalDAV extends HTTP_WebDAV_Server
 			// check if this is a property-object
 			elseif (count($prop) === 3 && isset($prop['name']) && isset($prop['ns']) && isset($prop['val']))
 			{
-				$value = in_array($prop['name'], ['address-data', 'calendar-data']) ? $prop['val'] : self::jsonProps($prop['val']);
+				$value = in_array($prop['name'], ['address-data', 'calendar-data', 'data']) ? $prop['val'] : self::jsonProps($prop['val']);
 			}
 			else
 			{
@@ -1513,8 +1529,8 @@ class CalDAV extends HTTP_WebDAV_Server
 		// for some reason OS X Addressbook (CFNetwork user-agent) uses now (DAV:add-member given with collection URL+"?add-member")
 		// POST to the collection URL plus a UID like name component (like for regular PUT) to create new entrys
 		if (isset($_GET['add-member']) || Handler::get_agent() == 'cfnetwork' ||
-			// addressbook has not implemented a POST handler, therefore we have to call the PUT handler
-			preg_match('#^(/[^/]+)?/(addressbook|calendar)(-[^/]+)?/$#', $options['path']) && self::isJSON())
+			// REST API: all but mail have no POST handler, therefore we have to call the PUT handler
+			!preg_match('#^(/[^/]+)?/mail(/|$)#', $options['path']) && self::isJSON())
 		{
 			$_GET['add-member'] = '';	// otherwise we give no Location header
 			return $this->PUT($options, 'POST');
@@ -1526,6 +1542,12 @@ class CalDAV extends HTTP_WebDAV_Server
 
 		if (($handler = $this->app_handler($app)))
 		{
+			// handle links for all apps supporting links
+			if (preg_match('#/'.$app.'/'.$id.'/links/#', $options['path']))
+			{
+				return $handler->createLink($options, $id);
+			}
+
 			// managed attachments
 			if (isset($_GET['action']) && substr($_GET['action'], 0, 11) === 'attachment-')
 			{
@@ -2027,12 +2049,18 @@ class CalDAV extends HTTP_WebDAV_Server
 			return '404 Not Found';
 		}
 		// REST API & PATCH only implemented for addressbook and calendar currently
-		if (!in_array($app, ['addressbook', 'calendar']) && $method === 'PATCH')
+		if (!self::isJSON() && $method === 'PATCH')
 		{
 			return '501 Not implemented';
 		}
 		if (($handler = $this->app_handler($app)))
 		{
+			// handle links for all apps supporting links
+			if ($method === 'POST' && preg_match('#/'.$app.'/'.$id.'/links/#', $options['path']))
+			{
+				return $handler->createLink($options, $id);
+			}
+
 			$status = $handler->put($options, $id, $user, $prefix, $method, $_SERVER['HTTP_CONTENT_TYPE']);
 
 			// set default stati: true --> 204 No Content, false --> should be already handled
@@ -2069,6 +2097,11 @@ class CalDAV extends HTTP_WebDAV_Server
 		}
 		if (($handler = $this->app_handler($app)))
 		{
+			// handle links for all apps supporting links
+			if (preg_match('#/'.$app.'/'.$id.'/links/(-?\d+)$#', $options['path'], $matches))
+			{
+				return $handler->deleteLink($options, $id, $matches[1]);
+			}
 			$status = $handler->delete($options,$id,$user);
 			// set default stati: true --> 204 No Content, false --> should be already handled
 			if (is_bool($status)) $status = $status ? '204 No Content' : '400 Something went wrong';
@@ -2307,7 +2340,7 @@ class CalDAV extends HTTP_WebDAV_Server
 		}
 
 		// Api\WebDAV\Server encodes %, # and ? again, which leads to storing e.g. '%' as '%25'
-		$id = strtr(array_pop($parts), array(
+		$id = strtr(array_shift($parts), array(
 			'%25' => '%',
 			'%23' => '#',
 			'%3F' => '?',
@@ -2349,7 +2382,8 @@ class CalDAV extends HTTP_WebDAV_Server
 			// do NOT log non-text attachments
 			$this->store_request = $_SERVER['REQUEST_METHOD'] != 'POST' ||
 				!self::isFileUpload() ||
-				substr($_SERVER['CONTENT_TYPE'], 0, 5) == 'text/';
+				substr($_SERVER['CONTENT_TYPE'], 0, 5) == 'text/' ||
+				str_starts_with($_SERVER['CONTENT_TYPE'], 'application/json');
 		}
 		// unconditionally start output-buffering to fix problems with huge multiget reports from TB110 AB
 		ob_start();
@@ -2362,13 +2396,15 @@ class CalDAV extends HTTP_WebDAV_Server
 	 * Check if request is a possibly large, binary file upload:
 	 * - CalDAV managed attachments or
 	 * - Mail REST API attachment upload
+	 * - REST API attachment upload to /$app/$id/links/
 	 *
 	 * @return bool
 	 */
 	protected static function isFileUpload()
 	{
 		return (isset($_GET['action']) && in_array($_GET['action'], array('attachment-add', 'attachment-update'))) ||
-			strpos($_SERVER['REQUEST_URI'], '/mail/attachments/');
+			strpos($_SERVER['REQUEST_URI'], '/mail/attachments/') ||
+			strpos($_SERVER['REQUEST_URI'], '/links/') && $_SERVER['REQUEST_METHOD'] === 'POST' && $_SERVER['CONTENT_TYPE'] !== 'application/json';
 	}
 
 	/**
@@ -2557,7 +2593,7 @@ class CalDAV extends HTTP_WebDAV_Server
 		if (self::isJSON())
 		{
 			header('Content-Type: application/json; charset=utf-8');
-			if (is_a($e, JsContactParseException::class))
+			if (is_a($e, JsParseException::class))
 			{
 				$status = '422 Unprocessable Entity';
 			}

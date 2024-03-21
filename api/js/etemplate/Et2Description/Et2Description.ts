@@ -8,7 +8,7 @@
  */
 
 import {Et2Widget} from "../Et2Widget/Et2Widget";
-import {css, html, LitElement, render} from "@lion/core";
+import {css, html, LitElement, render} from "lit";
 import {et2_IDetachedDOM} from "../et2_core_interfaces";
 import {activateLinks} from "../ActivateLinksDirective";
 import {et2_csvSplit} from "../et2_core_common";
@@ -28,11 +28,18 @@ export class Et2Description extends Et2Widget(LitElement) implements et2_IDetach
 			}
 			:host {
 				display:flex;
-				flex-direction: column;
-				justify-content: space-evenly;
+				flex-direction: row;
+				justify-content: flex-start;
 				flex: 0 1 auto !important;
 			}
-			label {display: contents;}
+
+				label {
+					padding-inline-end: 1ex;
+				}
+
+				.split-label label {
+					display: contents;
+				}
 			::slotted(a) {
 				cursor: pointer;
 				color: #26537c;
@@ -144,14 +151,14 @@ export class Et2Description extends Et2Widget(LitElement) implements et2_IDetach
 		this.requestUpdate('value', oldValue);
 	}
 
-	requestUpdate(attribute, oldValue)
+	updated(changedProperties)
 	{
-		super.requestUpdate(...arguments);
+		super.updated(changedProperties);
 		// Due to how we do the rendering into the light DOM (not sure it's right) we need this after
 		// value change or it won't actually show up
-		if(["value", "href", "activateLinks"].indexOf(attribute) != -1 && this.parentNode)
+		if((changedProperties.has("value") || changedProperties.has("href") || changedProperties.has("activateLinks")) && this.parentNode)
 		{
-			this.updateComplete.then(() => render(this._renderContent(), <HTMLElement><unknown>this));
+			render(this._renderContent(), <HTMLElement><unknown>this);
 		}
 	}
 
@@ -200,7 +207,7 @@ export class Et2Description extends Et2Widget(LitElement) implements et2_IDetach
 		}
 		// Turn off IDE reformatting, or it will add an extra line break into the template
 		// @formatter:off
-		return html`<slot part="form-control-label" name="label">${label}</slot><slot part="form-control-value"></slot>${after}`;
+		return html`<slot part="form-control-label" name="label" class=${after ? "split-label" : ""}><label>${label}</label></slot><slot part="form-control-value"></slot>${after}`;
 		// @formatter:on
 	}
 

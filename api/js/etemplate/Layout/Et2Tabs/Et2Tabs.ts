@@ -10,7 +10,7 @@
 import {SlTab, SlTabGroup, SlTabPanel} from "@shoelace-style/shoelace";
 import {loadWebComponent} from "../../Et2Widget/Et2Widget";
 import {et2_directChildrenByTagName, et2_filteredNodeIterator, et2_readAttrWithDefault} from "../../et2_core_xml";
-import {css, PropertyValues} from "@lion/core";
+import {css, PropertyValues} from "lit";
 import shoelace from "../../Styles/shoelace";
 import {et2_createWidget} from "../../et2_core_widget";
 import {colorsDefStyles} from "../../Styles/colorsDefStyles";
@@ -186,11 +186,7 @@ export class Et2Tabs extends Et2InputWidget(SlTabGroup) implements et2_IResizeab
 			{
 				let tab = this.extraTabs[i];
 				let tab_id = tab.id || tab.template;
-				let tab_options = {id: tab_id, template: tab.template, url: tab.url, content: undefined};
-				if(tab.id)
-				{
-					tab_options.content = tab.id;
-				}
+				let tab_options = {id: tab_id, template: tab.template, url: tab.url, content: tab.content};
 				tabData[tab.prepend ? 'unshift' : 'push'].call(tabData, {
 					"id": tab_id,
 					"label": this.egw().lang(tab.label),
@@ -391,9 +387,14 @@ export class Et2Tabs extends Et2InputWidget(SlTabGroup) implements et2_IResizeab
 		});
 	}
 
+	/**
+	 * Overridden to allow et2-tab-panel as well as sl-tab-panel
+	 *
+	 * @returns {[SlTabPanel]}
+	 */
 	getAllPanels()
 	{
-		const slot = this.body.querySelector('slot')!;
+		const slot = this.body!;
 		return [...slot.assignedElements()].filter(el => ['et2-tab-panel', 'sl-tab-panel'].indexOf(el.tagName.toLowerCase()) != -1) as [SlTabPanel];
 	}
 
@@ -536,6 +537,31 @@ export class Et2Tabs extends Et2InputWidget(SlTabGroup) implements et2_IResizeab
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * get tab panel-name or label the given widget is in
+	 *
+	 * @param widget
+	 * @param label true: return label, otherwise return panel-name
+	 * @return string panel-name or undefined
+	 */
+	static getTabPanel(widget, label)
+	{
+		let tab = widget;
+		while(tab._parent && tab._parent.nodeName !== 'ET2-TABBOX')
+		{
+			tab = tab._parent;
+		}
+		if (tab.nodeName === 'ET2-TAB-PANEL')
+		{
+			if (label)
+			{
+				return tab._parent?.querySelector('et2-tab[panel="'+tab.name+'"]')?.innerText;
+			}
+			return tab.name;
+		}
+		return undefined;
 	}
 
 	/**

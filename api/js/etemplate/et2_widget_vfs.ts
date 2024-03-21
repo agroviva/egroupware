@@ -26,7 +26,6 @@ import {et2_description} from "./et2_widget_description";
 import {et2_file} from "./et2_widget_file";
 import {et2_inputWidget} from "./et2_core_inputWidget";
 import {et2_IDetachedDOM} from "./et2_core_interfaces";
-import {et2_no_init} from "./et2_core_common";
 import {egw} from "../jsapi/egw_global";
 import {egw_getAppObjectManager, egwActionObject} from "../egw_action/egw_action";
 import {egw_keyHandler} from '../egw_action/egw_keymanager';
@@ -287,160 +286,6 @@ et2_register_widget(et2_vfsName, ["vfs-name"]);
 * vfs-name
 * filename automatically urlencoded on return (urldecoded on display to user)
 *
-* @augments et2_textbox
-*/
-export class et2_vfsPath extends et2_vfsName
-{
-	static readonly _attributes : any = {
-		noicon: {
-			type: "boolean",
-			description: "suppress folder icons",
-			default: true
-		}
-	};
-
-	private div : JQuery ;
-	private span : JQuery;
-
-	/**
-	 * Constructor
-	 *
-	 * @memberOf et2_vfsName
-	 */
-	constructor(_parent, _attrs? : WidgetConfig, _child? : object)
-	{
-		// Call the inherited constructor
-		super(_parent, _attrs, ClassWithAttributes.extendAttributes(et2_vfsPath._attributes, _child || {}));
-		this.div = jQuery(document.createElement("div"))
-			.addClass('et2_vfsPath');
-		this.span = jQuery(document.createElement("ul"))
-			.appendTo(this.div);
-		this.div.prepend(this.input);
-		this.setDOMNode(this.div[0]);
-		this.span.on('wheel', function(e){
-			var delta = e.originalEvent["deltaY"] > 0 ? 30 : -30;
-			this.scrollLeft = this.scrollLeft - delta;
-		});
-		this.span.on('mouseover', function (e){
-			if (this.scrollWidth > this.clientWidth)
-			{
-				jQuery(this).addClass('scrollable');
-			}
-			else
-			{
-				jQuery(this).removeClass('scrollable');
-			}
-		});
-	}
-
-	createInputWidget()
-	{
-		super.createInputWidget();
-
-		this.input.on('focus', function() {
-			this.input.val(this.options.value);
-			this.span.hide();
-		}.bind(this))
-			.on('focusout', function() {
-				// Can't use show() because it uses the wrong display
-				this.span.css('display', 'flex');
-				this.input.val('');
-			}.bind(this));
-	}
-
-	change(_node?)
-	{
-		if(this.input.val())
-		{
-			this.set_value(this.input.val());
-		}
-		return super.change(_node);
-	}
-
-	set_value(_value)
-	{
-		if(_value.path)
-		{
-			_value = _value.path;
-		}
-		if(_value === this.options.value && this._oldValue !== et2_no_init) return;
-
-		let path_parts = _value.split('/');
-		if(_value === '/') path_parts = [''];
-		let path = "/";
-		let text = '';
-		if (this.span) this.span.empty().css('display', 'flex');
-		this.input.val('');
-		for(let i = 0; i < path_parts.length; i++)
-		{
-			path += (path=='/'?'':'/')+path_parts[i];
-			text = egw.decodePath(path_parts[i]);
-
-			let image = path=='/' ? this.egw().image('navbar','api') : this.egw().image(text);
-
-			// Nice human-readable stuff for apps
-			if(path_parts[1] == 'apps')
-			{
-				if(i === 1)
-				{
-					text = this.egw().lang('applications');
-				}
-				else if( i === 2)
-				{
-					text = this.egw().lang(path_parts[2]);
-					image = this.egw().image('navbar',path_parts[2].toLowerCase());
-				}
-				else if(i === 3 && !isNaN(<number><unknown>text))
-				{
-					// we first need to call link_title without callback, as callback would be called for cache-hits too!
-					let link_title = this.egw().link_title(path_parts[2], path_parts[3], false);
-					if(link_title && typeof link_title !== 'undefined')
-					{
-						text = link_title;
-					}
-					else
-					{
-						this.egw().link_title(path_parts[2], path_parts[3], true).then(title =>
-						{
-							if(!title) return;
-							jQuery('li',this.span).first().text(title);
-						});
-					}
-				}
-			}
-			let self = this;
-			let node = jQuery(document.createElement("li"))
-				.addClass("vfsPath et2_clickable")
-				.text(text)
-				//.attr('title', egw.decodePath(path))
-				.click({data:path, egw: this.egw()}, function(e) {
-					return self.set_value(e.data.data);
-				})
-				.prependTo(this.span);
-			if(image && !this.options.noicon)
-			{
-				node.prepend(this.egw().image_element(image));
-			}
-			jQuery(this.getDOMNode()).append(this.span);
-		}
-
-		if(this.isAttached() && this.options.value !== _value)
-		{
-			this._oldValue = this.options.value;
-			this.options.value = _value;
-			this.change();
-		}
-	}
-	getValue() {
-		return this.options ? this.options.value : null;
-	}
-}
-et2_register_widget(et2_vfsPath, ["vfs-path"]);
-
-/**
-* vfs-name
-* filename automatically urlencoded on return (urldecoded on display to user)
-*
 * @augments et2_textbox_ro
 */
 export class et2_vfsName_ro extends et2_textbox_ro
@@ -510,7 +355,7 @@ export class et2_vfsSize extends et2_description
 {
 	static readonly _attributes : any = {
 		"value": {
-			"type": "integer"
+			"type": "any"	// not using "integer", as we use parseInt on everything not a number, but want to show empty of "" or undefined, not 0B
 		}
 	};
 	/**
@@ -531,9 +376,15 @@ export class et2_vfsSize extends et2_description
 		{
 			size = parseInt(size);
 		}
-		if(!size)
+		if(Number.isNaN(size))
 		{
-			size = 0;
+			return '';
+		}
+		let sign = '';
+		if (size < 0)
+		{
+			sign = '-';
+			size = -size;
 		}
 		const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 		let i = 0;
@@ -542,7 +393,7 @@ export class et2_vfsSize extends et2_description
 			size /= 1024;
 			++i;
 		}
-		return size.toFixed(i == 0 ? 0 : 1) + ' ' + units[i];
+		return sign+size.toFixed(i == 0 ? 0 : 1) + ' ' + units[i];
 	}
 
 	set_value(_value)
@@ -1274,13 +1125,14 @@ export class et2_vfsSelect extends et2_inputWidget
 		});
 		document.body.appendChild(<HTMLElement><unknown>this.dialog);
 
-		this.dialog.addEventListener('open', function(e)
+		// Wait for dialog to finish loading
+		this.dialog.updateComplete.then(() =>
 		{
 			app.vfsSelectUI.et2 = self.dialog.template.widgetContainer;
 			app.vfsSelectUI.vfsSelectWidget = self;
 			app.vfsSelectUI.et2_ready(app.vfsSelectUI.et2, 'api.vfsSelectUI');
 			app.vfsSelectUI.et2.getInstanceManager().app_obj['vfsSelectUI'] = app.vfsSelectUI;
-		});
+		})
 		this.dialog.addEventListener("close", () =>
 		{
 			self.dialog = undefined;
@@ -1389,4 +1241,4 @@ export class et2_vfsSelect extends et2_inputWidget
 		return this.value;
 	}
 };
-et2_register_widget(et2_vfsSelect, ["vfs-select"]);
+et2_register_widget(et2_vfsSelect, ["vfs-select", "old-vfs-select"]);

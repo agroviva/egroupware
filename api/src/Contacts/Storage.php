@@ -231,6 +231,10 @@ class Storage
 	 */
 	var $soextra;
 	var $sodistrib_list;
+	/**
+	 * @var Api\Db
+	 */
+	var $db;
 
 	/**
 	 * Constructor
@@ -542,9 +546,9 @@ class Storage
 	function save(&$contact)
 	{
 		// save mainfields
-		if ($contact['id'] && $this->contact_repository != $this->account_repository && is_object($this->so_accounts) &&
+		if (!empty($contact['id']) && $this->contact_repository != $this->account_repository && is_object($this->so_accounts) &&
 			($this->contact_repository == 'sql' && !is_numeric($contact['id']) ||
-			 $this->contact_repository == 'ldap' && is_numeric($contact['id'])))
+			    $this->contact_repository == 'ldap' && is_numeric($contact['id'])))
 		{
 			$this->so_accounts->data = $this->data2db($contact);
 			$error_nr = $this->so_accounts->save();
@@ -566,7 +570,7 @@ class Storage
 				$contact['id'] = $this->somain->data['id'];
 				$contact['uid'] = $this->somain->data['uid'];
 				$contact['etag'] = $this->somain->data['etag'];
-				$contact['files'] = $this->somain->data['files'];
+				$contact['files'] = $this->somain->data['files'] ?? null;
 
 				if ($this->contact_repository == 'sql-ldap')
 				{
@@ -1153,10 +1157,10 @@ class Storage
 	}
 
 	/**
-	 * Get the availible distribution lists for a user
+	 * Get the available distribution lists for a user
 	 *
 	 * @param int $required =Api\Acl::READ required rights on the list or multiple rights or'ed together,
-	 * 	to return only lists fullfilling all the given rights
+	 * 	to return only lists fulfilling all the given rights
 	 * @param string $extra_labels =null first labels if given (already translated)
 	 * @return array with id => label pairs or false if backend does not support lists
 	 */
@@ -1191,13 +1195,16 @@ class Storage
 		// add groups for all backends, if accounts addressbook is not hidden &
 		// preference has not turned them off
 		if ($GLOBALS['egw_info']['user']['preferences']['addressbook']['hide_accounts'] !== '1' &&
-				$GLOBALS['egw_info']['user']['preferences']['addressbook']['hide_groups_as_lists'] == '0')
+				$GLOBALS['egw_info']['user']['preferences']['addressbook']['hide_groups_as_lists'] !== '1')
 		{
 			foreach($GLOBALS['egw']->accounts->search(array(
 				'type' => 'groups'
 			)) as $account_id => $group)
 			{
-				$lists[(string)$account_id] = Api\Accounts::format_username($group['account_lid'], '', '', $account_id);
+				if ($GLOBALS['egw_info']['user']['preferences']['addressbook']['hide_groups_as_lists'] === '0' || !empty($group['account_email']))
+				{
+					$lists[(string)$account_id] = Api\Accounts::format_username($group['account_lid'], '', '', $account_id);
+				}
 			}
 		}
 
@@ -1205,7 +1212,7 @@ class Storage
 	}
 
 	/**
-	 * Get the availible distribution lists for givens users and groups
+	 * Get the available distribution lists for givens users and groups
 	 *
 	 * @param array $keys column-name => value(s) pairs, eg. array('list_uid'=>$uid)
 	 * @param string $member_attr ='contact_uid' null: no members, 'contact_uid', 'contact_id', 'caldav_name' return members as that attribute

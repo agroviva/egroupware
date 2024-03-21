@@ -49,7 +49,7 @@
 					</row>
 					<row class="mailComposeHeaders mailComposeJQueryReplyto">
 						<et2-description  value="Reply to"></et2-description>
-						<et2-select-email  id="replyto" width="100%" onclick="app.mail.address_click" searchUrl="EGroupware\Api\Etemplate\Widget\Taglist::ajax_email"></et2-select-email>
+						<et2-email  id="replyto" width="100%" onclick="app.mail.address_click" searchUrl="EGroupware\Api\Etemplate\Widget\Taglist::ajax_email"></et2-email>
 						<et2-description></et2-description>
 					</row>
 					<row class="mailComposeHeaders mailComposeJQueryFolder">
@@ -59,7 +59,7 @@
 					</row>
 					<row class="mailComposeHeaders" >
 						<et2-description  value="To"></et2-description>
-						<et2-select-email  id="to" width="100%" onclick="app.mail.address_click" onchange="app.mail.recipients_onchange" multiple="true" searchUrl="EGroupware\Api\Etemplate\Widget\Taglist::ajax_email" includeLists="true"></et2-select-email>
+                        <et2-email id="to" width="100%" onclick="app.mail.address_click" onchange="app.mail.recipients_onchange" includeLists="true"></et2-email>
 						<et2-vbox>
 							<et2-description  id="cc_expander" value="Cc" class="et2_button_text" onclick="app.mail.compose_fieldExpander"></et2-description>
 							<et2-description  id="bcc_expander" value="Bcc" class="et2_button_text" onclick="app.mail.compose_fieldExpander"></et2-description>
@@ -67,12 +67,12 @@
 					</row>
 					<row class="mailComposeHeaders mailComposeJQueryCc">
 						<et2-description  value="Cc"></et2-description>
-						<et2-select-email  id="cc" width="100%" onclick="app.mail.address_click" onchange="app.mail.recipients_onchange" multiple="true" searchUrl="EGroupware\Api\Etemplate\Widget\Taglist::ajax_email" includeLists="true"></et2-select-email>
+                        <et2-email id="cc" width="100%" onclick="app.mail.address_click" onchange="app.mail.recipients_onchange" includeLists="true"></et2-email>
 						<et2-description></et2-description>
 					</row>
 					<row  class="mailComposeHeaders mailComposeJQueryBcc">
 						<et2-description  value="Bcc"></et2-description>
-						<et2-select-email  id="bcc" width="100%" onclick="app.mail.address_click" onchange="app.mail.recipients_onchange" multiple="true" searchUrl="EGroupware\Api\Etemplate\Widget\Taglist::ajax_email" includeLists="true"></et2-select-email>
+                        <et2-email id="bcc" width="100%" onclick="app.mail.address_click" onchange="app.mail.recipients_onchange" includeLists="true"></et2-email>
 						<et2-description></et2-description>
 					</row>
 					<row class="mailComposeHeaders subjectContainer">
@@ -84,7 +84,8 @@
 		</et2-vbox>
 		<et2-vbox  class="mailComposeBodySection" width="99%">
 			<et2-hbox  disabled="@is_plain" class="mailComposeBody mailComposeHtmlContainer">
-				<htmlarea span="all" name="mail_htmltext" id="mail_htmltext" statusbar="false" menubar="false" mode="simple" imageUpload="link_to"  height="478px" width="100%" resize_ratio="0"/>
+				<htmlarea span="all" name="mail_htmltext" id="mail_htmltext" statusbar="false" menubar="false" mode="simple"
+					imageUpload="link_to"  height="478px" width="100%" resize_ratio="0" applyDefaultFont="true"/>
 			</et2-hbox>
 			<et2-hbox  disabled="@is_html" class="mailComposeBody mailComposeTextContainer">
 				<et2-textarea  rows="40" cols="120" width="100%" span="all" height="100%" name="mail_plaintext" id="mail_plaintext" noLang="1" resizeRatio="0"></et2-textarea>

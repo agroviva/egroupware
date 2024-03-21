@@ -32,7 +32,7 @@ class Customfields implements \IteratorAggregate
 	static protected $db;
 
 	/**
-	 * app the particular config class is instanciated for
+	 * app the particular config class is instantiated for
 	 *
 	 * @var string
 	 */
@@ -67,9 +67,10 @@ class Customfields implements \IteratorAggregate
 	 * @param int $start =0
 	 * @param int $num_rows =null
 	 * @param Api\Db $db =null reference to database instance to use
+	 * @param ?bool $tabs false: do NOT return cfs with explicit tab, true: only return cfs with explicit tab, null: return all
 	 * @return array with customfields
 	 */
-	function __construct($app, $account=false, $only_type2=null, $start=0, $num_rows=null, Api\Db $db=null)
+	function __construct($app, $account = false, $only_type2 = null, $start = 0, $num_rows = null, Api\Db $db = null, bool $tabs = null)
 	{
 		$this->app = $app;
 
@@ -89,6 +90,10 @@ class Customfields implements \IteratorAggregate
 		if ($only_type2)
 		{
 			$query[] = $this->commasep_match('cf_type2', $only_type2);
+		}
+		if (isset($tabs))
+		{
+			$query[] = 'cf_tab IS '.($tabs?'NOT ':'').'NULL';
 		}
 		if (!$db) $db = self::$db;
 		$this->iterator = $db->select(self::TABLE, '*', $query, __LINE__, __FILE__,
@@ -141,9 +146,10 @@ class Customfields implements \IteratorAggregate
 	 *	false for current user or true for all the private fields be returned too, default current user
 	 * @param string $only_type2 =null if given only return fields of type2 == $only_type2
 	 * @param Api\Db $db =null reference to database to use
+	 * @param ?bool $tabs false: do NOT return cfs with explicit tab, true: only return cfs with explicit tab, null: return all
 	 * @return array with customfields
 	 */
-	public static function get($app, $account=false, $only_type2=null, Api\Db $db=null)
+	public static function get($app, $account=false, $only_type2=null, Api\Db $db=null, ?bool $tabs=false)
 	{
 		$account_key = $account === true ? 'all' :
 				($account === false ? ($GLOBALS['egw_info']['user']['account_id']??null) :
@@ -435,8 +441,10 @@ class Customfields implements \IteratorAggregate
 			'cf_len'      => (string)$cf['len'] !== '' ? $cf['len'] : null,
 			'cf_rows'     => (string)$cf['rows'] !== '' ? $cf['rows'] : null,
 			'cf_order'    => $cf['order'],
+			'cf_tab'      => $cf['tab'] ?? null ?: null,
 			'cf_needed'   => $cf['needed'],
 			'cf_private'  => $cf['private'] ? implode(',', $cf['private']) : null,
+			'cf_readonly' => $cf['readonly'] ? implode(',', $cf['readonly']) : null,
 			'cf_modifier' => $GLOBALS['egw_info']['user']['account_id'],
 			'cf_modified' => time(),
 		), array(

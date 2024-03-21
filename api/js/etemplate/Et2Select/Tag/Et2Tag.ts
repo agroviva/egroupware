@@ -8,8 +8,12 @@
  */
 import {Et2Widget} from "../../Et2Widget/Et2Widget";
 import {SlTag} from "@shoelace-style/shoelace";
-import {classMap, css, html, TemplateResult} from "@lion/core";
+import {css, html, TemplateResult} from "lit";
+import {classMap} from "lit/directives/class-map.js";
 import shoelace from "../../Styles/shoelace";
+import {state} from "lit/decorators/state.js";
+import {property} from "lit/decorators/property.js";
+import {Et2Textbox} from "../../Et2Textbox/Et2Textbox";
 
 /**
  * Tag is usually used in a Select with multiple=true, but there's no reason it can't go anywhere
@@ -23,7 +27,6 @@ export class Et2Tag extends Et2Widget(SlTag)
 			shoelace, css`
 			:host {
 			  flex: 1 1 auto;
-			  overflow: hidden;
 			}
 
 			.tag--pill {
@@ -35,6 +38,9 @@ export class Et2Tag extends Et2Widget(SlTag)
 			  width: 20px;
 			}
 
+			.tag__prefix {
+			  line-height: normal;
+			}
 			.tag__content {
 			  padding: 0px 0.2rem;
 			  flex: 1 2 auto;
@@ -65,21 +71,16 @@ export class Et2Tag extends Et2Widget(SlTag)
 			`];
 	}
 
-	static get properties()
-	{
-		return {
-			...super.properties,
-			editable: {type: Boolean, reflect: true},
-			value: {type: String, reflect: true}
-		}
-	}
+	@property({type: Boolean}) editable = false;
+	@property({type: String, reflect: true}) value = "";
+
+	@state() current = false; // the user has keyed into the tag (focused), but hasn't done anything yet (shows a highlight)
+	@state() isEditing = false;
 
 	constructor(...args : [])
 	{
 		super(...args);
-		this.value = "";
 		this.pill = false;
-		this.editable = false;
 		this.removable = true;
 
 		this.handleKeyDown = this.handleKeyDown.bind(this);
@@ -104,7 +105,8 @@ export class Et2Tag extends Et2Widget(SlTag)
             ${this.editable ? html`
                 <et2-button-icon
                         label=${this.egw().lang("edit")}
-                        name="pencil"
+                        image="pencil"
+                        noSubmit="true"
                         @click=${this.startEdit}
                 ></et2-button-icon>` : ''
             }
@@ -113,11 +115,12 @@ export class Et2Tag extends Et2Widget(SlTag)
                         <sl-icon-button
                                 part="remove-button"
                                 exportparts="base:remove-button__base"
-                                name="x"
+                                name="x-lg"
                                 library="system"
                                 label=${this.egw().lang('remove')}
                                 class="tag__remove"
                                 @click=${this.handleRemoveClick}
+                                tabindex="-1"
                         ></sl-icon-button>
                     `
               : ''}
@@ -132,9 +135,9 @@ export class Et2Tag extends Et2Widget(SlTag)
                         'tag--editable': this.editable,
                         'tag--editing': this.isEditing,
                         // Types
-                        'tag--primary': this.variant === 'primary',
+                        'tag--primary': this.variant === 'primary' || this.current,
                         'tag--success': this.variant === 'success',
-                        'tag--neutral': this.variant === 'neutral',
+                        'tag--neutral': this.variant === 'neutral' && !this.current,
                         'tag--warning': this.variant === 'warning',
                         'tag--danger': this.variant === 'danger',
                         'tag--text': this.variant === 'text',
@@ -168,6 +171,7 @@ export class Et2Tag extends Et2Widget(SlTag)
 				<et2-textbox value="${this.value}"
                              @sl-change=${this.handleChange}
                              @blur=${this.stopEdit}
+                             @mousedown=${e => e.stopPropagation()}
                              @click=${e => e.stopPropagation()}
                              @keydown=${this.handleKeyDown}
                 ></et2-textbox>
@@ -189,10 +193,17 @@ export class Et2Tag extends Et2Widget(SlTag)
 		{
 			event.stopPropagation();
 		}
+		this.getRootNode().host.hide()
 		this.isEditing = true;
+		this.setAttribute("contenteditable", "true");
+
 		this.requestUpdate();
-		this.updateComplete.then(() =>
+		this.updateComplete.then(async() =>
 		{
+			await this._editNode.updateComplete;
+			// This stops drag and drop from interfereing with mouse edits
+			this._editNode.input.setAttribute("contenteditable", "true");
+
 			this._editNode.focus();
 		})
 	}
@@ -200,6 +211,11 @@ export class Et2Tag extends Et2Widget(SlTag)
 	stopEdit()
 	{
 		this.isEditing = false;
+		this.removeAttribute("contenteditable");
+		let event = new Event("change", {
+			bubbles: true
+		});
+		event.originalValue = this.value;
 		this.dataset.original_value = this.value;
 		if(!this.editable)
 		{
@@ -209,14 +225,11 @@ export class Et2Tag extends Et2Widget(SlTag)
 		this.requestUpdate();
 		this.updateComplete.then(() =>
 		{
-			let event = new Event("change", {
-				bubbles: true
-			})
 			this.dispatchEvent(event);
 		})
 	}
 
-	get _editNode() : HTMLInputElement
+	get _editNode() : Et2Textbox
 	{
 		return this.shadowRoot.querySelector('et2-textbox');
 	}
@@ -229,6 +242,11 @@ export class Et2Tag extends Et2Widget(SlTag)
 		if(["Tab", "Enter"].indexOf(event.key) !== -1)
 		{
 			this._editNode.blur();
+		}
+		else if(["Escape"].includes(event.key))
+		{
+			this._editNode.value = this.value;
+			this.stopEdit();
 		}
 	}
 

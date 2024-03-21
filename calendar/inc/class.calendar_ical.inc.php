@@ -610,13 +610,13 @@ class calendar_ical extends calendar_boupdate
 							// write start + end of whole day events as dates
 							if(!is_object($event['end']))
 							{
-								$event['end'] = new Api\DateTime($event['end']);
+								$event['end'] = new Api\DateTime($event['end'], self::$tz_cache[$event['tzid']]);
 							}
 							$event['end-nextday'] = clone $event['end'];
 							$event['end-nextday']->add("1 day");	// we need the date of the next day, as DTEND is non-inclusive (= exclusive) in rfc2445
 							foreach (array('start' => 'DTSTART','end-nextday' => 'DTEND') as $f => $t)
 							{
-								$time = new Api\DateTime($event[$f],Api\DateTime::$server_timezone);
+								$time = new Api\DateTime($event[$f], self::$tz_cache[$event['tzid']]);
 								$arr = Api\DateTime::to($time,'array');
 								$vevent->setAttribute($t, array('year' => $arr['year'],'month' => $arr['month'],'mday' => $arr['day']),
 									array('VALUE' => 'DATE'));
@@ -1718,6 +1718,11 @@ class calendar_ical extends calendar_boupdate
 						$event_to_store = $event; // prevent $event from being changed by update method
 						$this->server2usertime($event_to_store);
 						$updated_id = $this->update($event_to_store, true,true,false,true,$msg,$skip_notification);
+						// Make sure it's marked as a recurrence exception, not an additional event
+						$this->so->recurrence($updated_id,
+											  Api\DateTime::to($event_to_store['start'], 'server'),
+											  Api\DateTime::to($event_to_store['end'], 'server'), [], true
+						);
 						unset($event_to_store);
 					}
 					break;
@@ -2529,7 +2534,12 @@ class calendar_ical extends calendar_boupdate
 		// Remove videoconference link appended to description in calendar_groupdav->iCal()
 		if (!empty($event['description']) && class_exists('EGroupware\Status\Videoconference\Call'))
 		{
-			$regex = "/^(\r?\n)?(Videoconference|" . lang('Videoconference') . "):\r?\n" . str_replace('/','\/',EGroupware\Status\Videoconference\Call::getMeetingRegex()) ."(\r?\n)*/im";
+			static $regex = "";
+			if(!$regex)
+			{
+				$regex = "/^(\r?\n)?(Videoconference|" . lang('Videoconference') . "):\r?\n" . str_replace('/', '\/', EGroupware\Status\Videoconference\Call::getMeetingRegex()) . "(\r?\n)*/im";
+			}
+
 			$event['description'] = preg_replace($regex, '', $event['description']);
 		}
 
@@ -2747,6 +2757,27 @@ class calendar_ical extends calendar_boupdate
 					unset($vcardData['recur_type']);	// it wont be set by +=
 					$vcardData += calendar_rrule::parseRrule($attributes['value'], false, $vcardData);
 					if (!empty($vcardData['recur_enddate'])) self::check_fix_endate ($vcardData);
+					break;
+				case 'RDATE':
+					$hour = date('H', $vcardData['start']);
+					$minutes = date('i', $vcardData['start']);
+					$seconds = date('s', $vcardData['start']);
+					if($attributes['params']['VALUE'] == 'PERIOD')
+					{
+						$vcardData['recur_type'] = calendar_rrule::PERIOD;
+						$vcardData['recur_exception'] = [];
+						foreach($attributes['values'] as $date)
+						{
+							$vcardData['recur_exception'][] = mktime(
+								$hour,
+								$minutes,
+								$seconds,
+								$date['month'],
+								$date['mday'],
+								$date['year']
+							);
+						}
+					}
 					break;
 				case 'EXDATE':	// current Horde_Icalendar returns dates, no timestamps
 					if ($attributes['values'])

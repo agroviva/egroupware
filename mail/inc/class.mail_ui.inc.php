@@ -599,7 +599,7 @@ class mail_ui
 		catch (Exception $e)
 		{
 			// do not exit here. mail-tree should be build. if we exit here, we never get there.
-			error_log(__METHOD__.__LINE__.$e->getMessage().($e->details?', '.$e->details:'').' Menuaction:'.$_GET['menuaction'].'.'.function_backtrace());
+			_egw_log_exception($e);
 			if (isset($this->mail_bo))
 			{
 				if (empty($etpl))
@@ -4083,7 +4083,7 @@ $filter['before']= date("d-M-Y", $cutoffdate2);
 			$this->changeProfile($icServerID);
 		}
 
-		$bodyResponse = $this->get_load_email_data($messageID,$_partID,$folder,$_htmloptions, $_POST['smime_passphrase']);
+		$bodyResponse = $this->get_load_email_data($messageID,$_partID,$folder,$_htmloptions, $_POST['smime_passphrase'] ?? null);
 		//error_log(array2string($bodyResponse));
 		echo $bodyResponse;
 
@@ -4120,16 +4120,12 @@ $filter['before']= date("d-M-Y", $cutoffdate2);
 							if (Mail::$debug) error_log(__METHOD__,' ()'.$e->getMessage ());
 							continue;
 						}
-						if (in_array($fS['shortDisplayName'],Mail::$autoFolders)) $fS['shortDisplayName']=lang($fS['shortDisplayName']);
 						//error_log(__METHOD__.__LINE__.array2string($fS));
 						if ($fS['unseen'])
 						{
-							$oA[$_folderName] = $fS['shortDisplayName'].' ('.$fS['unseen'].')';
+							$oA[$_folderName] = ''.$fS['unseen'];
 						}
-						if ($fS['unseen']==0 && $fS['shortDisplayName'])
-						{
-							$oA[$_folderName] = $fS['shortDisplayName'];
-						}
+
 					}
 				}
 			}
@@ -5282,7 +5278,13 @@ $filter['before']= date("d-M-Y", $cutoffdate2);
 			}
 			else
 			{
-				$response->call('egw.message',lang('flagged %1 messages as %2 in %3',(isset($_messageList['all']) && $_messageList['all']?lang('all'):count($_messageList['msg'])),lang(($flag[$_flag]?$flag[$_flag]:$_flag)),lang($folder)));
+				$response->call(
+					'egw.refresh',
+					lang('flagged %1 messages as %2 in %3', (isset($_messageList['all']) && $_messageList['all'] ? lang('all') : count($_messageList['msg'])), lang(($flag[$_flag] ? $flag[$_flag] : $_flag)), lang($folder)),
+					'mail',
+					$_messageList['msg'],
+					'update-in-place'
+				);
 			}
 		}
 	}
