@@ -43,3 +43,7 @@ table.egwGridView_grid tbody td[align=right] {
 }
 
 label[id^='timesheet-index_'][id$='ts_start]'] time {padding-left:5px;}
+
+#timesheet-index_nm table.et2_grid {
+    width: 100%;
+}
